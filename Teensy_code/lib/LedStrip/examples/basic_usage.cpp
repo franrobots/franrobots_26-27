@@ -5,7 +5,7 @@ LedStrip leds(11, 5);
 
 void setup() {
   leds.begin();
-  leds.setColor(LedSide::ALL, LedColor::GREEN);
+  leds.setColor(LedSide::ALL, LedColor::WHITE);
   delay(500);
   leds.blink(LedSide::LEFT, LedColor::YELLOW, 3, 250);
 }
