@@ -2,10 +2,10 @@
 #include "Motor.h"
 #include "Robot.h"
 
-motor mFL(6, 7, 2);
+motor mFL(29, 43, 2);
 motor mRL(6, 7, 3);
-motor mFR(8, 9, 4);
-motor mRR(8, 9, 5);
+motor mFR(28, 24, 4);
+motor mRR(9, 8, 5);
 Robot base(mFL, mRL, mFR, mRR);
 
 void setup() {
