@@ -25,11 +25,18 @@ constexpr uint8_t I2C_SCL = 19;
 // Motores 1 e 2 → IN00
 // Motores 3 e 4 → IN01
 
-constexpr uint8_t IN00A = 6;
-constexpr uint8_t IN00B = 7;
-
-constexpr uint8_t IN01A = 8;
-constexpr uint8_t IN01B = 9;
+// Direito Frente (M1)
+constexpr uint8_t Ain1_M1 = 6;
+constexpr uint8_t Ain2_M1 = 7;
+// Direito tras (M2)
+constexpr uint8_t Ain1_M2 = 8;
+constexpr uint8_t Ain2_M2 = 9;
+// Esquerdo Frente (M1)
+constexpr uint8_t Ain1_M3 = 6;
+constexpr uint8_t Ain2_M3 = 7;
+// Esquerdo tras (M2)
+constexpr uint8_t Ain1_M4 = 8;
+constexpr uint8_t Ain2_M4 = 9;
 
 
 // ======================================================
@@ -46,8 +53,11 @@ constexpr uint8_t PWM_M4 = 5;
 // 🟢 ENCODERS (1 CANAL POR MOTOR)
 // ======================================================
 
-constexpr uint8_t ENC1 = 20;
-constexpr uint8_t ENC2 = 21;
+constexpr uint8_t ENC1_A = 20;
+constexpr uint8_t ENC1_B = 22; // Mudar com a spirla
+
+constexpr uint8_t ENC2_A = 21;
+constexpr uint8_t ENC2_B = 24; // Mudar com a spirla
 
 
 // ======================================================
@@ -142,4 +152,3 @@ constexpr uint8_t TCA_A = 0x70;
 constexpr uint8_t TCA_B = 0x71;
 constexpr uint8_t OPENMVL = 0x10;
 constexpr uint8_t OPENMVR = 0x11;
-

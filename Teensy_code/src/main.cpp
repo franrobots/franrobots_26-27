@@ -22,17 +22,17 @@ static const uint8_t kFloorPins[] = {C9_PIN, LDR_BLUE, LDR_RED, LDR_GREEN};
 ReflectancePlate floorSensor(kFloorPins, 4);
 
 BNO055_FranRobots imub(0x29);
-Encoder encFL(ENC1);
-Encoder encRR(ENC2);
+Encoder encFL(ENC1_A, ENC1_B);
+Encoder encRR(ENC2_A, ENC2_B);
 
 OpenMVCamera camL(OPENMVL);
 OpenMVCamera camR(OPENMVR);
 
-motor mFL(IN00A, IN00B, PWM_M1);
-motor mRL(IN00A, IN00B, PWM_M2);
-motor mFR(IN01A, IN01B, PWM_M3);
-motor mRR(IN01A, IN01B, PWM_M4);
-Robot robotBase(mFL, mRL, mFR, mRR);
+motor mFR(Ain1_M1, Ain2_M1, PWM_M3);
+motor mRR(Ain1_M2, Ain2_M2, PWM_M4);
+motor mFL(Ain1_M3, Ain2_M3, PWM_M1);
+motor mRL(Ain1_M4, Ain2_M4, PWM_M2);
+Robot robotBase(mFR, mRR, mFL, mRL);
 LedStrip ledStrip(LED_STRIP, 5);
 ServoKit servoKit;
 SwitchAvoidance bumper(SW_LEFT, SW_RIGHT);

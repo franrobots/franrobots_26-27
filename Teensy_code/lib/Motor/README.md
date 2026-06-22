@@ -11,7 +11,7 @@ Controla um motor DC com ponte H (2 pinos de direcao + 1 PWM).
 - `stop` com freio eletrico ou coast.
 
 ## API detalhada
-- `motor(uint8_t pinA, uint8_t pinB, uint16_t pinPWM)`
+- `motor(uint8_t pinAin1, uint8_t pinAin2, uint16_t pinPWM)`
 Mapeia pinos do canal de motor.
 
 - `void begin(uint8_t resolutionBits = 12, uint32_t freqHZ = 20000)`

@@ -22,8 +22,8 @@ static const uint8_t kFloorPins[] = {C9_PIN, LDR_BLUE, LDR_RED, LDR_GREEN};
 ReflectancePlate floorSensor(kFloorPins, 4);
 
 BNO055_FranRobots imub(0x29);
-Encoder encFL(ENC1);
-Encoder encRR(ENC2);
+Encoder encFL(ENC1_A, ENC1_B);
+Encoder encRR(ENC2_A, ENC2_B);
 
 OpenMVCamera camL(OPENMVL);
 OpenMVCamera camR(OPENMVR);

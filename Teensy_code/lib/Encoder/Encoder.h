@@ -3,7 +3,7 @@
 
 class Encoder {
 public:
-  explicit Encoder(uint8_t pin);
+  explicit Encoder(uint8_t pinA, uint8_t pinB);
 
   void begin(bool pullup = true);
 
@@ -12,8 +12,12 @@ public:
   int32_t readAndReset();
 
 private:
-  uint8_t _pin;
+  uint8_t _pinA;
+  uint8_t _pinB;
   volatile int32_t _ticks;
+  bool _lastStateA = LOW;
+  bool val = LOW;
+  bool direcao = true;
 
   void handleISR();
 
