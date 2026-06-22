@@ -1,7 +1,8 @@
 #include <Arduino.h>
 #include "Motor.h"
+  
 
-motor m(6, 7, 2);
+motor m(Ain1_M1, Ain2_M1, PWM_M1);
 
 void setup() {
   m.begin(12, 20000);

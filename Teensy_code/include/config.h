@@ -25,11 +25,18 @@ constexpr uint8_t I2C_SCL = 19;
 // Motores 1 e 2 → IN00
 // Motores 3 e 4 → IN01
 
-constexpr uint8_t IN00A = 6;
-constexpr uint8_t IN00B = 7;
-
-constexpr uint8_t IN01A = 8;
-constexpr uint8_t IN01B = 9;
+// Direito Frente (M1)
+constexpr uint8_t Ain1_M1 = 6;
+constexpr uint8_t Ain2_M1 = 7;
+// Direito tras (M2)
+constexpr uint8_t Ain1_M2 = 8;
+constexpr uint8_t Ain2_M2 = 9;
+// Esquerdo Frente (M1)
+constexpr uint8_t Ain1_M3 = 6;
+constexpr uint8_t Ain2_M3 = 7;
+// Esquerdo tras (M2)
+constexpr uint8_t Ain1_M4 = 8;
+constexpr uint8_t Ain2_M4 = 9;
 
 
 // ======================================================

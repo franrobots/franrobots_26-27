@@ -1,19 +1,19 @@
 #include <Arduino.h>
 #include "Encoder.h"
 
-Encoder encA(20);
-Encoder encB(22);
+Encoder enc1(20, 21);
+Encoder enc2(22, 23);
 
 void setup() {
   Serial.begin(115200);
-  encA.begin(true);
-  encB.begin(true);
+  enc1.begin(true);
+  enc2.begin(true);
 }
 
 void loop() {
-  Serial.print("A=");
-  Serial.print(encA.read());
-  Serial.print(" B=");
-  Serial.println(encB.read());
+  Serial.print("1=");
+  Serial.print(enc1.read());
+  Serial.print(" 2=");
+  Serial.println(enc2.read());
   delay(100);
 }

@@ -15,6 +15,9 @@ private:
   uint8_t _pinA;
   uint8_t _pinB;
   volatile int32_t _ticks;
+  bool _lastStateA = LOW;
+  bool val = LOW;
+  bool direcao = true;
 
   void handleISR();
 
