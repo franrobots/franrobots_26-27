@@ -46,8 +46,11 @@ constexpr uint8_t PWM_M4 = 5;
 // 🟢 ENCODERS (1 CANAL POR MOTOR)
 // ======================================================
 
-constexpr uint8_t ENC1 = 20;
-constexpr uint8_t ENC2 = 21;
+constexpr uint8_t ENC1_A = 20;
+constexpr uint8_t ENC1_B = 22; // Mudar com a spirla
+
+constexpr uint8_t ENC2_A = 21;
+constexpr uint8_t ENC2_B = 24; // Mudar com a spirla
 
 
 // ======================================================
@@ -142,4 +145,3 @@ constexpr uint8_t TCA_A = 0x70;
 constexpr uint8_t TCA_B = 0x71;
 constexpr uint8_t OPENMVL = 0x10;
 constexpr uint8_t OPENMVR = 0x11;
-

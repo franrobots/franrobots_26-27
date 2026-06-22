@@ -2,7 +2,7 @@
 #include "Encoder.h"
 
 Encoder encA(20);
-Encoder encB(21);
+Encoder encB(22);
 
 void setup() {
   Serial.begin(115200);

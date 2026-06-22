@@ -42,9 +42,7 @@ void Robot::turnRight(int16_t speed) {
   move_tank(0, -speed);
 }
 
-void Robot::axis_curve(int16_t speed, const char* axis) {
-  axis == "L" || axis == "l" ? move_tank(0, speed) : move_tank(0, -speed);
-}
+
 
 
 void Robot::stop(bool brake) {

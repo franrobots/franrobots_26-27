@@ -10,12 +10,16 @@ Robot base(mFL, mRL, mFR, mRR);
 
 void setup() {
   base.begin(12, 20000);
+  mFL.setDeadband(800);
+  mRL.setDeadband(800);
+  mFR.setDeadband(800);
+  mRR.setDeadband(800);
 }
 
 void loop() {
-  base.move_tank(500, 0);
+  base.move_tank(3000, 0);
   delay(600);
-  base.move_tank(0, 450);
+  base.move_tank(0, 3000);
   delay(500);
   base.stop(true);
   delay(600);

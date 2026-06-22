@@ -28,8 +28,8 @@ void motor::begin(uint8_t resolutionBits, uint32_t freqHZ)
 
     analogWriteResolution(resolutionBits);
     // analogWriteFrequency(freqHZ);
-    // analogWriteFrequency(_pinA,freqHZ);
-    // analogWriteFrequency(_pinB,freqHZ);
+    // analogWriteFrequency(_pinAin1,freqHZ);
+    // analogWriteFrequency(_pinAin2,freqHZ);
     analogWriteFrequency(_pinPWM,freqHZ);
 
     _maxPwm = (uint16_t)((1u << resolutionBits) - 1u);
@@ -68,7 +68,7 @@ uint16_t motor::applyPWM(int16_t valuePWM)
 
     uint16_t mag = (uint16_t)abs((int)valuePWM);
     if (mag > _maxPwm) mag = _maxPwm;
-    // ✅ aplica deadband antes do ganho (pra garantir partida)
+    // aplica deadband antes do ganho (pra garantir partida)
     mag = applyDeadband(mag);
     // Ganho por motor + clamp
     uint16_t m = scaleAndClamp(mag, _gain);

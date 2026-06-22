@@ -528,9 +528,23 @@ int16_t RobotControl::clampPwm(float v) const {
 }
 
 int32_t RobotControl::traveledTicks(const PlannerInput& in) const {
-  const int32_t dfl = abs(in.encFlTicks - _startFlTicks);
-  const int32_t drr = abs(in.encRrTicks - _startRrTicks);
-  return (dfl + drr) / 2;
+  const int32_t deltaFl = in.encFlTicks - _startFlTicks;
+  const int32_t deltaRr = in.encRrTicks - _startRrTicks;
+
+  const int32_t dfl = abs(deltaFl);
+  const int32_t drr = abs(deltaRr);
+  const int32_t ERROR_THRESHOLD = 150;
+  bool direcao = (deltaFl * deltaRr < 0);
+  int32_t diff = abs(dfl - drr);
+  if (diff > ERROR_THRESHOLD || direcao) {
+    if (dfl > drr) {
+        return dfl; // Confia só na roda dianteira esquerda
+      } else {
+        return drr; // Confia só na roda traseira direita
+      }
+  } else{
+    return (dfl + drr) / 2;
+  }
 }
 
 const char* RobotControl::toString(TileType t) {
