@@ -1,4 +1,5 @@
 #include "ColorCalibration.h"
+#include "LedStrip.h"
 
 static constexpr uint32_t COLOR_MAGIC = 0xC010CA1u;
 static constexpr uint16_t COLOR_EEPROM_ADDR = 128;
@@ -82,6 +83,7 @@ static ColorThreshold captureColor(ReflectancePlate& plate,
 
 void ColorCalibration::run(ReflectancePlate& plate,
                            uint8_t buttonPin,
+                           LedStrip *ledStrip,
                            uint8_t c9Idx,
                            uint8_t auxIdx,
                            bool ratioMode,
@@ -96,20 +98,31 @@ void ColorCalibration::run(ReflectancePlate& plate,
   blob.magic = COLOR_MAGIC;
   blob.version = COLOR_VERSION;
 
-  Serial.println("=== Calibracao de Cores ===");
-  Serial.println("Posicione no BLACK e aperte o botao.");
+  if (ledStrip) {
+    ledStrip->clear(); 
+    ledStrip->update();
+  }
   waitButtonPressAndRelease(buttonPin);
   blob.black = captureColor(plate, c9Idx, auxIdx, ratioMode, ratioScale);
 
-  Serial.println("Posicione no BLUE e aperte o botao.");
+  if (ledStrip) {
+    ledStrip->setColor(LedSide::ALL, LedColor::BLUE); // Acende Azul
+    ledStrip->update();
+  }
   waitButtonPressAndRelease(buttonPin);
   blob.blue = captureColor(plate, c9Idx, auxIdx, ratioMode, ratioScale);
 
-  Serial.println("Posicione no RED e aperte o botao.");
+  if (ledStrip) {
+    ledStrip->setColor(LedSide::ALL, LedColor::RED); // Acende Vermelho
+    ledStrip->update();
+  }
   waitButtonPressAndRelease(buttonPin);
   blob.red = captureColor(plate, c9Idx, auxIdx, ratioMode, ratioScale);
 
-  Serial.println("Posicione no SILVER e aperte o botao.");
+  if (ledStrip) {
+    ledStrip->setColor(LedSide::ALL, LedColor::YELLOW); // Amarelo/Brilhante simulando Prata
+    ledStrip->update();
+  }
   waitButtonPressAndRelease(buttonPin);
   blob.silver = captureColor(plate, c9Idx, auxIdx, ratioMode, ratioScale);
 
@@ -120,7 +133,10 @@ void ColorCalibration::run(ReflectancePlate& plate,
   plate.setRedThreshold(blob.red);
   plate.setSilverThreshold(blob.silver);
 
-  Serial.println("Calibracao de cores salva.");
+  if (ledStrip) {
+    ledStrip->clear();
+    ledStrip->update();
+  }
 }
 
 bool ColorCalibration::load(ReflectancePlate& plate) {

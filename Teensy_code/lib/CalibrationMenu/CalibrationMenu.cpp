@@ -56,10 +56,10 @@ void CalibrationMenu::Update(uint8_t buttonPin, LedStrip &ledStrip,VL53Mux12_FRA
     }
     if (btnPressionado){
       if (_ColorMenuNow == 1){
-        ToFCalibration::run(tof, buttonPin);
+        ToFCalibration::run(tof, buttonPin, ledStrip);
       }
       else{
-        ColorCalibration::run(floorSensor, buttonPin, 0, 3);
+        ColorCalibration::run(floorSensor, buttonPin, &ledStrip, 0, 3);
       }
       ledStrip.clear();
       ledStrip.update();
