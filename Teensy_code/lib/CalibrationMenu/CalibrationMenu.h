@@ -17,13 +17,14 @@ enum MenuOptions
 class CalibrationMenu
 {
 public:
-    void Update(uint8_t buttonPin, LedStrip& ledStrip);
+    void Update(uint8_t buttonPin, LedStrip& ledStrip,VL53Mux12_FRAN &tof, ReflectancePlate &floorSensor);
 
 private:
     uint32_t _timeBtnPressed = 0;
     uint32_t _timeFreeBtn = millis();
     uint32_t _timeLastColorChange = 0;
     uint8_t _ColorMenuNow = 1; 
+    uint8_t _timetoConfirm = 0;
     MenuOptions _State = ROUND;
 };
 
