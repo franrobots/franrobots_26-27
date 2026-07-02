@@ -22,7 +22,7 @@ private:
     uint32_t _timeFreeBtn = millis();
     uint32_t _timeLastColorChange = 0;
     uint8_t _ColorMenuNow = 1; 
-    uint8_t _timetoConfirm = 0;
+    uint32_t _timetoConfirm = 0;
     MenuOptions _State = ROUND;
 };
 

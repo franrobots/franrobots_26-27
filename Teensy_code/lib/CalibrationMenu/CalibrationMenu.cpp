@@ -23,7 +23,7 @@ void CalibrationMenu::Update(uint8_t buttonPin, LedStrip &ledStrip,VL53Mux12_FRA
 
   case MENU_CLICKING:
 
-    if (now - _timeLastColorChange >= 500){
+    if (now - _timeLastColorChange >= 1000){
       _timeLastColorChange = now;
       if (_ColorMenuNow == 1){
         _ColorMenuNow = 2;
