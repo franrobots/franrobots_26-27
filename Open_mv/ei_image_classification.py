@@ -8,6 +8,7 @@ sensor.skip_frames(time=2000)          # Let the camera adjust.
 
 net = None
 labels = None
+lista = [0]
 
 try:
     # load the model, alloc the model file on the heap if we have at least 64K free after loading
@@ -28,6 +29,7 @@ while(True):
     img = sensor.snapshot()
 
     predictions_list = list(zip(labels, net.predict([img])[0].flatten().tolist()))
+
 
     for i in range(len(predictions_list)):
         print("%s = %f" % (predictions_list[i][0], predictions_list[i][1]))

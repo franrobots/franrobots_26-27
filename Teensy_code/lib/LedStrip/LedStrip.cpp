@@ -59,6 +59,14 @@ void LedStrip::blink(LedSide side, LedColor color, uint8_t repetitions, uint16_t
   _blinkOn = false;
 }
 
+void LedStrip::setpixel(LedSide side, uint8_t index, LedColor color) {
+  if (side == LedSide::LEFT && index < 2) {
+    _strip.setPixelColor(index, colorToRGB(color));
+  }else if (side == LedSide::RIGHT && index < 2) {
+    _strip.setPixelColor(index + 3, colorToRGB(color));
+  }
+}
+
 void LedStrip::update() {
   if (!_blinking) return;
 

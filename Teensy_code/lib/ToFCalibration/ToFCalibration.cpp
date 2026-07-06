@@ -48,7 +48,7 @@ void ToFCalibration::run(VL53Mux12_FRAN& tof, uint8_t buttonPin, LedStrip& ledSt
         ledOn = !ledOn;
         ledStrip.clear();
         if (ledOn) {
-          //ledStrip.setPixel(lado.ledIndex, LedColor::BLUE); 
+          ledStrip.setpixel(LedSide::ALL, lado.ledIndex, LedColor::WHITE);
         }
         ledStrip.update();
       }
@@ -66,7 +66,7 @@ void ToFCalibration::run(VL53Mux12_FRAN& tof, uint8_t buttonPin, LedStrip& ledSt
 
       if (menorDistancia < 100) {
         ledStrip.clear();
-        //ledStrip.setPixel(lado.ledIndex, LedColor::BLUE);
+        ledStrip.setpixel(LedSide::ALL, lado.ledIndex, LedColor::WHITE);
         ledStrip.update();
 
         uint32_t somaLeituras[4] = {0};

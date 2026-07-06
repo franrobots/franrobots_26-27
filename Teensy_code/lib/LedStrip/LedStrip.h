@@ -28,6 +28,7 @@ public:
   void clear();
 
   void blink(LedSide side, LedColor color, uint8_t repetitions, uint16_t intervalMs = 400);
+  void setpixel(LedSide side, uint8_t index, LedColor color);
 
 private:
   Adafruit_NeoPixel _strip;
