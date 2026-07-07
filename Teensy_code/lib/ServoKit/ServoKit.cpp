@@ -57,3 +57,10 @@ void ServoKit::dropKits(ServoDropSide side, uint8_t kits) {
 void ServoKit::dropForVictim(ServoDropSide side, uint8_t victimType) {
   dropKits(side, kitsForVictim(victimType));
 }
+
+void ServoKit::moveForMs(ServoDropSide side, uint16_t ms) {
+  if (!_attached) return;
+  _servo.writeMicroseconds(ms);
+  delay(1000);
+  moveTo(_centerDeg);
+}

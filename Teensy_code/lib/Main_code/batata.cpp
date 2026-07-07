@@ -28,10 +28,10 @@ Encoder encRR(ENC2_A, ENC2_B);
 OpenMVCamera camL(OPENMVL);
 OpenMVCamera camR(OPENMVR);
 
-motor mFL(IN00A, IN00B, PWM_M1);
-motor mRL(IN00A, IN00B, PWM_M2);
-motor mFR(IN01A, IN01B, PWM_M3);
-motor mRR(IN01A, IN01B, PWM_M4);
+motor mFL(Ain1_M3, Ain2_M3, PWM_M1);
+motor mRL(Ain1_M4, Ain2_M4, PWM_M2);
+motor mFR(Ain1_M1, Ain2_M1, PWM_M3);
+motor mRR(Ain1_M2, Ain2_M2, PWM_M4);
 Robot robotBase(mFL, mRL, mFR, mRR);
 LedStrip ledStrip(LED_STRIP, 5);
 ServoKit servoKit;
@@ -152,7 +152,7 @@ void setup() {
 
     if (mode == 't' || mode == 'a') {
       Serial.println("Calibrando ToF...");
-      ToFCalibration::run(tof, BUTTON_PIN);
+      ToFCalibration::run(tof, BUTTON_PIN, ledStrip);
     }
     if (mode == 'c' || mode == 'a') {
       Serial.println("Calibrando cor...");

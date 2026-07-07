@@ -1,15 +1,15 @@
 # Teste Verificação openmv - By: Calebe
-
 import sensor
 import time
+import pyb
 
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
 sensor.set_framesize(sensor.QVGA)
 sensor.set_windowing((240, 240))
 sensor.skip_frames(time=2000)
-sensor.set_auto_whitebal(False)
-sensor.set_auto_gain(False, gain_db=8)
+# sensor.set_auto_whitebal(False)
+# sensor.set_auto_gain(False, gain_db=8)
 clock = time.clock()
 r = 0
 x = 0
@@ -24,23 +24,55 @@ TOLERANCIA_R = 4
 historico_aneis = [[] for _ in range(5)]
 TAMANHO_FILTRO = 9
 
+vitima = 0
+estado = 0
+
+calibration_mode = False
+
 CORES_REF = {
     "Vermelho": (45, 45, 20),
     "Amarelo":  (78, -15, 40),
     "Verde":    (56, -40, 30),
-    "Azul":     (70, 20, -10),
+    "Azul":     (20, 20, -10),
     "Preto":    (10, 0, 0),
     "Branco":   (99, 0, 0)
 }
 
 CAL_ROI = (5, 5, 15, 15)
 
-def classificar_cor(stats, offset_a, offset_b, l_fundo):
-    L = stats.l_mean()
-    A = stats.a_mean() - offset_a
-    B = stats.b_mean() - offset_b
 
-    #print(f"L: {L} || A: {A} || {B}")
+def calibrate_color(stats, margem=10):
+    L_mean = stats.l_mean
+    A_mean = stats.a_mean
+    B_mean = stats.b_mean
+
+    L_min = max(0, int(L_mean - margem))
+    L_max = min(100, int(L_mean + margem))
+    A_min = max(-128, int(A_mean - margem))
+    A_max = min(127, int(A_mean + margem))
+    B_min = max(-128, int(B_mean - margem))
+    B_max = min(127, int(B_mean + margem))
+
+    return (L_min, L_max, A_min, A_max, B_min, B_max)
+
+
+def show_calibrate(img):
+    roi = (140, 100, 40, 40)
+    img.draw_rectangle(roi, color=(255, 255, 255))
+    stats = img.get_statistics(roi=roi)
+    threshold = calibrate_color(stats)
+
+    print("\n=========== Threshold =============")
+    print(threshold)
+    print("=====================================")
+
+
+def classificar_cor(stats, offset_a, offset_b, l_fundo):
+    L = stats.l_mean
+    A = stats.a_mean - offset_a
+    B = stats.b_mean - offset_b
+
+    # print(f"L: {L} || A: {A} || {B}")
 
     if L < 42:
         return "Preto"
@@ -52,7 +84,8 @@ def classificar_cor(stats, offset_a, offset_b, l_fundo):
     menor_distancia = 1000
 
     for nome, (rL, rA, rB) in CORES_REF.items():
-        if nome in ["Branco", "Preto"]: continue
+        if nome in ["Branco", "Preto"]:
+            continue
 
         dist = ((L - rL)**2 + (3.5 * (A - rA))**2 + (3.5 * (B - rB))**2)**0.5
 
@@ -61,34 +94,15 @@ def classificar_cor(stats, offset_a, offset_b, l_fundo):
             cor = nome
     return cor
 
-while True:
-    clock.tick()
-    img = sensor.snapshot()
-    img.rotation_corr(z_rotation=180)
 
-    img_color = img.copy()
-
-    stats_cal = img_color.get_statistics(roi=CAL_ROI)
-    L_fundo = stats_cal.l_mean()
-    off_a = stats_cal.a_mean()
-    off_b = stats_cal.b_mean()
-    thres_geral = (0, int(L_fundo - 15), -128, 127, -128, 127)
-    thres_amarelo = (0, 100, -128, 127, 10, 127)
-
-    img.gaussian(1)
-    img.binary([thres_geral, thres_amarelo], invert=False)
-    img.erode(3)
-    img.dilate(1)
-
-
-    img.draw_rectangle(CAL_ROI, color=(0, 255, 0))
-    c = img.find_circles(threshold=4900, r_min=60, r_max=80, x_margin= 35,y_margin=35, r_margin = 12)
+def circulo():
+    c = img.find_circles(threshold=5500, r_min=20, r_max=100, x_margin=50, y_margin=50, r_margin=50)
 
     if c:
-        best = max(c, key=lambda c: c.magnitude())
-        x = best.x()
-        y = best.y()
-        r = best.r()
+        best = max(c, key=lambda c: c.magnitude)
+        x = best.x
+        y = best.y
+        r = best.r
         espessura = int(r * 0.15)
         altura = int(r * 0.15)
         y_comum = int(y - (altura / 2))
@@ -96,8 +110,6 @@ while True:
 
         pontos = [0, 0.3, 0.5, 0.7, 0.9]
         cores = []
-        vitima = 0
-        estado = 0
 
         for i, p in enumerate(pontos):
             x_p = int(x + (r * p)) - off_x
@@ -108,33 +120,64 @@ while True:
                 cor_atual = classificar_cor(stats, off_a, off_b, L_fundo)
 
                 historico_aneis[i].append(cor_atual)
-                if len(historico_aneis[i]) > TAMANHO_FILTRO: historico_aneis[i].pop(0)
+                if len(historico_aneis[i]) > TAMANHO_FILTRO:
+                    historico_aneis[i].pop(0)
                 cor_votos = max(set(historico_aneis[i]), key=historico_aneis[i].count)
                 cores.append(cor_votos)
 
                 img.draw_rectangle(roi, color=(255, 0, 0))
+        return cores
 
-        for i in range(len(cores)):
-            if cores[i] == "Azul":
-                vitima += 2
-            elif cores[i] == "Verde":
-                vitima += 1
-            elif cores[i] == "Amarelo":
-                continue
-            elif cores[i] == "Vermelho":
-                vitima -= 1
+
+while True:
+    clock.tick()
+    img = sensor.snapshot()
+    img.rotation_corr(z_rotation=180)
+
+    img_color = img.copy()
+    if calibration_mode:
+        show_calibrate(img_color)
+        pyb.delay(500)
+    else:
+        stats_cal = img_color.get_statistics(roi=CAL_ROI)
+        L_fundo = stats_cal.l_mean
+        off_a = stats_cal.a_mean
+        off_b = stats_cal.b_mean
+        thres_geral = (0, int(L_fundo - 20), -128, 127, -128, 127)
+        thres_amarelo = (0, 100, -128, 127, 10, 127)
+        img.gaussian(1)
+        img.binary([thres_geral, thres_amarelo], invert=False)
+        img.erode(3)
+        img.dilate(1)
+        img.draw_rectangle(CAL_ROI, color=(0, 255, 0))
+        cores = circulo()
+
+        if cores:
+            for i in range(len(cores)):
+                if cores[i] == "Azul":
+                    vitima += 2
+                elif cores[i] == "Verde":
+                    vitima += 1
+                elif cores[i] == "Amarelo":
+                    continue
+                elif cores[i] == "Vermelho":
+                    vitima -= 1
+                else:
+                    vitima -= 2
+
+            if vitima == 2:
+                estado = "Harmed"
+            elif vitima == 1:
+                estado = "Stable"
+            elif vitima == 0:
+                estado = "Unharmed"
             else:
-                vitima -= 2
-
-        if vitima == 2:
-            estado = "Harmed"
-        elif vitima == 1:
-            estado = "Stable"
-        elif vitima == 0:
-            estado = "Unharmed"
+                estado = "False"
+            print(f"Cores do circulo: {cores}")
+            print(vitima, estado)
+            vitima = 0
         else:
-            estado = "False"
+            pass
+            # Verifica letras
 
-        img.draw_circle(int(x), int(y), int(r), color=(0, 255, 0))
-        print(f"Cores do circulo: {cores}")
-        print(vitima, estado)
+    # img.draw_image(img_color, 0, 0)

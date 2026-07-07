@@ -21,6 +21,7 @@ public:
   void center();
   void dropKits(ServoDropSide side, uint8_t kits);
   void dropForVictim(ServoDropSide side, uint8_t victimType);
+  void moveForMs(ServoDropSide side, uint16_t ms);
 
 private:
   Servo _servo;
