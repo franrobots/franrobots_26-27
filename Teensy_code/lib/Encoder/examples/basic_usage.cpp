@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include "Encoder.h"
 
-Encoder enc1(20, 21);
-Encoder enc2(22, 23);
+Encoder enc1(23, 21);
+Encoder enc2(26, 20);
 
 void setup() {
   Serial.begin(115200);

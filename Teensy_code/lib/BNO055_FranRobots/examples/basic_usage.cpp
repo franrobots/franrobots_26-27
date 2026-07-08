@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "BNO055_FranRobots.h"
 
-BNO055_FranRobots bno(0x29);
+BNO055_FranRobots bno(0x28);
 
 void setup() {
   Serial.begin(115200);

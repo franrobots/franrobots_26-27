@@ -5,11 +5,13 @@ import pyb
 
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
-sensor.set_framesize(sensor.QVGA)
-sensor.set_windowing((240, 240))
+sensor.set_framesize(sensor.QQVGA)
+sensor.set_windowing((150, 320))
 sensor.skip_frames(time=2000)
-# sensor.set_auto_whitebal(False)
-# sensor.set_auto_gain(False, gain_db=8)
+sensor.set_auto_whitebal(False)
+sensor.set_auto_gain(False, gain_db=12)
+sensor.set_hmirror(True)
+sensor.set_vflip(True)
 clock = time.clock()
 r = 0
 x = 0
@@ -67,10 +69,10 @@ def show_calibrate(img):
     print("=====================================")
 
 
-def classificar_cor(stats, offset_a, offset_b, l_fundo):
-    L = stats.l_mean
-    A = stats.a_mean - offset_a
-    B = stats.b_mean - offset_b
+def classificar_cor(stats1, stats2, stats3, stats4, l_fundo):
+    L = (stats1.l_mean + stats2.l_mean + stats3.l_mean + stats4.l_mean)
+    A = (stats1.a_mean + stats2.a_mean + stats3.a_mean + stats4.a_mean)
+    B = (stats1.b_mean + stats2.b_mean + stats3.b_mean + stats4.b_mean)
 
     # print(f"L: {L} || A: {A} || {B}")
 
@@ -96,7 +98,7 @@ def classificar_cor(stats, offset_a, offset_b, l_fundo):
 
 
 def circulo():
-    c = img.find_circles(threshold=5500, r_min=20, r_max=100, x_margin=50, y_margin=50, r_margin=50)
+    c = img.find_circles(threshold=6000, r_min=20, r_max=100, x_margin=50, y_margin=50, r_margin=50)
 
     if c:
         best = max(c, key=lambda c: c.magnitude)
@@ -106,18 +108,29 @@ def circulo():
         espessura = int(r * 0.15)
         altura = int(r * 0.15)
         y_comum = int(y - (altura / 2))
+        x_comum = int(x - (altura / 2))
         off_x = espessura // 2
 
-        pontos = [0, 0.3, 0.5, 0.7, 0.9]
+        pontos = [0, 0.3, 0.55, 0.73, 0.95]
         cores = []
 
         for i, p in enumerate(pontos):
-            x_p = int(x + (r * p)) - off_x
-            roi = (x_p, y_comum, espessura, altura)
+            # Cruz nos círculos
+            xR_p = int(x + (r * p)) - off_x
+            roixR = (xR_p, y_comum, espessura, altura)
+            yR_p = int(y + (r * p)) - off_x
+            roiyR = (x_comum, yR_p, espessura, altura)
+            xL_p = int(x - (r * p)) + off_x
+            roixL = (xL_p, y_comum, espessura, altura)
+            yL_p = int(y - (r * p)) - off_x
+            roiyL = (x_comum, yL_p, espessura, altura)
 
-            if 0 <= x_p < (240 - espessura):
-                stats = img_color.get_statistics(roi=roi)
-                cor_atual = classificar_cor(stats, off_a, off_b, L_fundo)
+            if 0 <= xR_p < (240 - espessura):
+                statsxR = img_color.get_statistics(roi=roixR)
+                statsyR = img_color.get_statistics(roi=roiyR)
+                statsxL = img_color.get_statistics(roi=roixL)
+                statsyL = img_color.get_statistics(roi=roiyL)
+                cor_atual = classificar_cor(statsxR, statsyR, statsxL, statsyL, L_fundo)
 
                 historico_aneis[i].append(cor_atual)
                 if len(historico_aneis[i]) > TAMANHO_FILTRO:
@@ -125,14 +138,17 @@ def circulo():
                 cor_votos = max(set(historico_aneis[i]), key=historico_aneis[i].count)
                 cores.append(cor_votos)
 
-                img.draw_rectangle(roi, color=(255, 0, 0))
+                # img_color.draw_rectangle(roixR, color=(255, 0, 0))
+                # img_color.draw_rectangle(roiyR, color=(255, 0, 0))
+                # img_color.draw_rectangle(roixL, color=(255, 0, 0))
+                # img_color.draw_rectangle(roiyL, color=(255, 0, 0))
+        # img_color.draw_circle((x, y, r), color=(255, 0, 0))
         return cores
 
 
 while True:
     clock.tick()
     img = sensor.snapshot()
-    img.rotation_corr(z_rotation=180)
 
     img_color = img.copy()
     if calibration_mode:
@@ -141,15 +157,13 @@ while True:
     else:
         stats_cal = img_color.get_statistics(roi=CAL_ROI)
         L_fundo = stats_cal.l_mean
-        off_a = stats_cal.a_mean
-        off_b = stats_cal.b_mean
         thres_geral = (0, int(L_fundo - 20), -128, 127, -128, 127)
-        thres_amarelo = (0, 100, -128, 127, 10, 127)
+        thres_amarelo = (50, 100, -128, 127, 10, 127)
         img.gaussian(1)
         img.binary([thres_geral, thres_amarelo], invert=False)
-        img.erode(3)
-        img.dilate(1)
-        img.draw_rectangle(CAL_ROI, color=(0, 255, 0))
+        img.erode(5)
+        img.dilate(4)
+        img_color.draw_rectangle(CAL_ROI, color=(0, 255, 0))
         cores = circulo()
 
         if cores:
@@ -180,4 +194,5 @@ while True:
             pass
             # Verifica letras
 
-    # img.draw_image(img_color, 0, 0)
+    img.draw_image(img_color, 0, 0)
+    print("FPS:", clock.fps())
