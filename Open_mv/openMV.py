@@ -1,7 +1,5 @@
-# Teste Verificação openmv - By: Calebe
-import sensor
-import time
-import pyb
+import sensor, time, pyb
+from machine import LED
 
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
@@ -17,6 +15,11 @@ r = 0
 x = 0
 y = 0
 
+ledB = LED("LED_BLUE")
+ledR = LED("LED_RED")
+
+I2C_ADDR = 0x13
+
 frames_sem_circulo = 0
 confirmacao = 0
 
@@ -28,6 +31,7 @@ TAMANHO_FILTRO = 9
 
 vitima = 0
 estado = 0
+state_count = []
 
 calibration_mode = False
 
@@ -138,12 +142,34 @@ def circulo():
                 cor_votos = max(set(historico_aneis[i]), key=historico_aneis[i].count)
                 cores.append(cor_votos)
 
-                # img_color.draw_rectangle(roixR, color=(255, 0, 0))
-                # img_color.draw_rectangle(roiyR, color=(255, 0, 0))
-                # img_color.draw_rectangle(roixL, color=(255, 0, 0))
-                # img_color.draw_rectangle(roiyL, color=(255, 0, 0))
-        # img_color.draw_circle((x, y, r), color=(255, 0, 0))
+                img_color.draw_rectangle(roixR, color=(255, 0, 0))
+                img_color.draw_rectangle(roiyR, color=(255, 0, 0))
+                img_color.draw_rectangle(roixL, color=(255, 0, 0))
+                img_color.draw_rectangle(roiyL, color=(255, 0, 0))
+        img_color.draw_circle((x, y, r), color=(255, 0, 0))
         return cores
+
+
+bus = pyb.I2C(2, pyb.I2C.SLAVE, addr=I2C_ADDR)
+bus.deinit()
+bus = pyb.I2C(2, pyb.I2C.SLAVE, addr=I2C_ADDR)
+
+buffer = bytearray([0, 0])  # [valor identificado, confiabilidade]
+print("Esperando o ESP32...")
+
+
+def enviar_i2c():
+    try:
+        cmd = bus.recv(1, timeout=100)
+        if cmd and cmd[0] == 0x00:
+            bus.send(buffer)
+            print(f"[I2C] Enviado: {buffer[0]}, {buffer[1]}")
+            time.sleep_ms(30)
+            ledB.on()
+        else:
+            print(f"[I2C] Comando inválido: {cmd}")
+    except Exception as e:
+        pass
 
 
 while True:
@@ -157,7 +183,7 @@ while True:
     else:
         stats_cal = img_color.get_statistics(roi=CAL_ROI)
         L_fundo = stats_cal.l_mean
-        thres_geral = (0, int(L_fundo - 20), -128, 127, -128, 127)
+        thres_geral = (0, int(L_fundo - 5), -128, 127, -128, 127)
         thres_amarelo = (50, 100, -128, 127, 10, 127)
         img.gaussian(1)
         img.binary([thres_geral, thres_amarelo], invert=False)
@@ -167,29 +193,28 @@ while True:
         cores = circulo()
 
         if cores:
-            for i in range(len(cores)):
-                if cores[i] == "Azul":
-                    vitima += 2
-                elif cores[i] == "Verde":
-                    vitima += 1
-                elif cores[i] == "Amarelo":
-                    continue
-                elif cores[i] == "Vermelho":
-                    vitima -= 1
-                else:
-                    vitima -= 2
+            while not len(estado) > 99:
+                for i in range(len(cores)):
+                    if cores[i] == "Azul":
+                        vitima += 2
+                    elif cores[i] == "Verde":
+                        vitima += 1
+                    elif cores[i] == "Amarelo":
+                        continue
+                    elif cores[i] == "Vermelho":
+                        vitima -= 1
+                    else:
+                        vitima -= 2
 
-            if vitima == 2:
-                estado = "Harmed"
-            elif vitima == 1:
-                estado = "Stable"
-            elif vitima == 0:
-                estado = "Unharmed"
-            else:
-                estado = "False"
-            print(f"Cores do circulo: {cores}")
-            print(vitima, estado)
-            vitima = 0
+                if vitima == 2:
+                    estado = "Harmed"
+                elif vitima == 1:
+                    estado = "Stable"
+                elif vitima == 0:
+                    estado = "Unharmed"
+                else:
+                    estado = "False"
+                state_count.append(estado)
         else:
             pass
             # Verifica letras

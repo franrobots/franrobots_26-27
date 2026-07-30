@@ -133,7 +133,6 @@ PlannerOutput RobotControl::update(const PlannerInput& in) {
         _dfsSize--;
       }
 
-      // If no DFS/BFS move remains, only return home when exploration is complete.
       if (!haveMove && !_returnHomeActive && isExplorationComplete()) {
         if (_pose.x != _startX || _pose.y != _startY) {
           if (buildBfsPathTo(_startX, _startY) && _bfsIdx < _bfsLen) {

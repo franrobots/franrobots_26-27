@@ -5,7 +5,7 @@
 =========================================================
                 TEENSY 4.0 – ROBO MAZE
 =========================================================
-Autor: Breno
+Autor: Calebe Almeida
 Plataforma: Teensy 4.0 (i.MX RT1062)
 Ambiente: PlatformIO
 =========================================================
@@ -22,12 +22,10 @@ constexpr uint8_t I2C_SCL = 19;
 // ======================================================
 // 🔴 MOTORES – DIREÇÃO (COMPARTILHADA POR PARES)
 // ======================================================
-// Motores 1 e 2 → IN00
-// Motores 3 e 4 → IN01
 
 // Direito Frente (M1)
-constexpr uint8_t Ain1_M1 = 6;
-constexpr uint8_t Ain2_M1 = 7;
+constexpr uint8_t Ain1_M1 = 29;
+constexpr uint8_t Ain2_M1 = 25;
 // Direito tras (M2)
 constexpr uint8_t Ain1_M2 = 8;
 constexpr uint8_t Ain2_M2 = 9;
@@ -44,7 +42,7 @@ constexpr uint8_t Ain2_M4 = 9;
 // ======================================================
 
 constexpr uint8_t PWM_M1 = 2;
-constexpr uint8_t PWM_M2 = 3;
+constexpr uint8_t PWM_M2 = 5;
 constexpr uint8_t PWM_M3 = 4;
 constexpr uint8_t PWM_M4 = 5;
 
