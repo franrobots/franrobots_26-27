@@ -9,10 +9,9 @@ static inline int clamp_int(int v, int lo, int hi)
     return v;
 }
 
-motor::motor(uint8_t pinAin1, uint8_t pinAin2, uint16_t pinPWM)
+motor::motor(uint8_t pinAin1, uint8_t pinAin2)
     : _pinAin1(pinAin1),
       _pinAin2(pinAin2),
-      _pinPWM(pinPWM),
       _maxPwm(4095),
       _deadband(0),
       _gain(1.0f),
@@ -24,13 +23,13 @@ void motor::begin(uint8_t resolutionBits, uint32_t freqHZ)
 {
     pinMode(_pinAin1, OUTPUT);
     pinMode(_pinAin2, OUTPUT);
-    pinMode(_pinPWM, OUTPUT);
+    // pinMode(_pinPWM, OUTPUT);
 
     analogWriteResolution(resolutionBits);
     // analogWriteFrequency(freqHZ);
-    // analogWriteFrequency(_pinAin1,freqHZ);
-    // analogWriteFrequency(_pinAin2,freqHZ);
-    analogWriteFrequency(_pinPWM,freqHZ);
+    analogWriteFrequency(_pinAin1,freqHZ);
+    analogWriteFrequency(_pinAin2,freqHZ);
+    // analogWriteFrequency(_pinPWM,freqHZ);
 
     _maxPwm = (uint16_t)((1u << resolutionBits) - 1u);
 
@@ -46,26 +45,6 @@ uint16_t motor::applyPWM(int16_t valuePWM)
         valuePWM = _correctionFn(valuePWM);
     }
 
-    if (valuePWM == 0)
-    {
-        digitalWrite(_pinAin1, LOW);
-        digitalWrite(_pinAin2, LOW);
-        analogWrite(_pinPWM, 0);
-        _valuePWM = 0;
-        return 0;
-    }
-    // Direção do par
-    if (valuePWM < 0)
-    { // sentido A
-        digitalWrite(_pinAin1, HIGH);
-        digitalWrite(_pinAin2, LOW);
-    }
-    else
-    { // sentido B
-        digitalWrite(_pinAin1, LOW);
-        digitalWrite(_pinAin2, HIGH);
-    }
-
     uint16_t mag = (uint16_t)abs((int)valuePWM);
     if (mag > _maxPwm) mag = _maxPwm;
     // aplica deadband antes do ganho (pra garantir partida)
@@ -73,25 +52,42 @@ uint16_t motor::applyPWM(int16_t valuePWM)
     // Ganho por motor + clamp
     uint16_t m = scaleAndClamp(mag, _gain);
 
-    analogWrite(_pinPWM, m);
+    if (valuePWM == 0)
+    {
+        digitalWrite(_pinAin1, HIGH);
+        digitalWrite(_pinAin2, HIGH);
+        // analogWrite(_pinPWM, 0);
+        _valuePWM = 0;
+        return 0;
+    }
+    // Direção do par
+    if (valuePWM < 0)
+    { // sentido A
+        analogWrite(_pinAin1, m * -1);
+        analogWrite(_pinAin2, LOW);
+    }
+    else
+    { // sentido B
+        analogWrite(_pinAin1, LOW);
+        analogWrite(_pinAin2, m);
+    }
     return m;
 }
 
 void motor::stopMotor(bool brake)
 {
-    analogWrite(_pinPWM, 0);
+    analogWrite(_pinAin1, 0);
+    analogWrite(_pinAin2, 0);
     if (brake)
     {
         digitalWrite(_pinAin1, HIGH);
         digitalWrite(_pinAin2, HIGH);
-        analogWrite(_pinPWM, _maxPwm);
         _valuePWM = _maxPwm;
     }
     else
     {
         digitalWrite(_pinAin1, LOW);
         digitalWrite(_pinAin2, LOW);
-        analogWrite(_pinPWM, 0);
         _valuePWM = 0;
     }
 }

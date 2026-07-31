@@ -23,6 +23,8 @@ constexpr uint8_t I2C_SCL = 19;
 // 🔴 MOTORES – DIREÇÃO (COMPARTILHADA POR PARES)
 // ======================================================
 
+// MUDAR PARA TER CERTEZA COM A SPIRLA
+
 // Direito Frente (M1)
 constexpr uint8_t Ain1_M1 = 29;
 constexpr uint8_t Ain2_M1 = 25;
@@ -41,11 +43,12 @@ constexpr uint8_t Ain2_M4 = 9;
 // 🔴 MOTORES – PWM INDIVIDUAL
 // ======================================================
 
-constexpr uint8_t PWM_M1 = 2;
-constexpr uint8_t PWM_M2 = 5;
-constexpr uint8_t PWM_M3 = 4;
-constexpr uint8_t PWM_M4 = 5;
+//constexpr uint8_t PWM_M1 = 2;
+//constexpr uint8_t PWM_M2 = 5;
+//constexpr uint8_t PWM_M3 = 4;
+//constexpr uint8_t PWM_M4 = 5;
 
+// NÃO USADO MAIS, AGORA PELO DRIVER MUDAR,O PWM É COMPARTILHADO PELO PAR DE MOTORES (M1 e M1, M2 e M2)
 
 // ======================================================
 // 🟢 ENCODERS (1 CANAL POR MOTOR)
@@ -69,7 +72,9 @@ constexpr uint8_t SERVO_PIN = 10;
 // 🟣 FITA LED (WS2812)
 // ======================================================
 
-constexpr uint8_t LED_STRIP = 11;
+constexpr uint8_t LED_LEFT = 11;
+constexpr uint8_t LED_MIDDLE = 32;
+constexpr uint8_t LED_RIGHT = 33;
 
 
 // ======================================================
@@ -96,7 +101,7 @@ constexpr uint16_t LDR_GREEN = A3;   // pin 17
 // ======================================================
 
 // PWM
-constexpr uint16_t PWM_FREQUENCY = 20000;   // 20 kHz (ideal para motor)
+constexpr uint16_t PWM_FREQUENCY = 30000;   // 20 kHz (ideal para motor)
 constexpr uint8_t  PWM_RESOLUTION = 12;      // 0–255
 
 // ADC
@@ -104,6 +109,9 @@ constexpr uint8_t  ADC_RESOLUTION = 12;     // 0–4095
 constexpr uint16_t ADC_MAX_VALUE  = (1 << ADC_RESOLUTION) - 1;
 
 // Servo
+
+// SERVO SEM COISO, ENTÃO NADA DISSO MUDA NADA, NÃO É USADO, MAS DEIXEI AQUI PRA NÃO ESQUECER, SE PRECISAR DEPOIS É SÓ AJUSTAR
+
 constexpr uint16_t SERVO_MIN_US = 1000;
 constexpr uint16_t SERVO_MAX_US = 2000;
 constexpr uint8_t SERVO_CENTER_DEG = 90;

@@ -4,7 +4,7 @@
 
 class motor {
   public:
-    motor(uint8_t pinAin1, uint8_t pinAin2, uint16_t pinPWM);
+    motor(uint8_t pinAin1, uint8_t pinAin2);
     void begin(uint8_t resolutionBits =12, uint32_t freqHZ = 20000);
     uint16_t applyPWM(int16_t valuePWM);
     void stopMotor(bool brake = true);
@@ -15,8 +15,7 @@ class motor {
     uint8_t _pinAin2;
 
   private:
-
-    uint16_t _pinPWM;  
+ 
     uint16_t _valuePWM; 
     uint16_t _maxPwm; 
     uint16_t _deadband;

@@ -14,7 +14,7 @@ enum class LedColor : uint8_t {
 enum class LedSide : uint8_t {
   LEFT,
   RIGHT,
-  MIDDLE
+  ALL
 };
 
 class LedStrip {

@@ -1,15 +1,23 @@
 #include <Arduino.h>
 #include "LedStrip.h"
 
-LedStrip leds(11, 5);
+LedStrip leds_L(11, 3);
+LedStrip leds_M(33, 7);
+LedStrip leds_R(32, 3);
 
 void setup() {
-  leds.begin();
-  leds.setColor(LedSide::ALL, LedColor::WHITE);
-  delay(500);
-  leds.blink(LedSide::LEFT, LedColor::YELLOW, 3, 250);
+  leds_L.begin();
+  leds_M.begin();
+  leds_R.begin();
+  leds_L.setColor(LedSide::ALL, LedColor::WHITE);
+  leds_M.setColor(LedSide::ALL, LedColor::WHITE);
+  leds_R.setColor(LedSide::ALL, LedColor::WHITE);
+  delay(1000);
+  leds_M.blink(LedSide::ALL, LedColor::RED, 7, 200);
 }
 
 void loop() {
-  leds.update();
+  leds_L.update();
+  leds_M.update();
+  leds_R.update();
 }

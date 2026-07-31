@@ -1,4 +1,4 @@
-import sensor, time, pyb
+import sensor, time, ml, uos, gc, pyb
 from machine import LED
 
 sensor.reset()
@@ -172,6 +172,13 @@ def enviar_i2c():
         pass
 
 
+try:
+    net = ml.Model("trained.tflite", load_to_fb=uos.stat('trained.tflite')[6] > (gc.mem_free() - (64*1024)))
+    labels = [line.rstrip('\n') for line in open("labels.txt")]
+except Exception as e:
+    raise Exception("Error loading model or labels: %s" % e)
+
+
 while True:
     clock.tick()
     img = sensor.snapshot()
@@ -207,17 +214,40 @@ while True:
                         vitima -= 2
 
                 if vitima == 2:
-                    estado = "Harmed"
+                    result = 4  # Harmed
                 elif vitima == 1:
-                    estado = "Stable"
+                    result = 5  # Stable
                 elif vitima == 0:
-                    estado = "Unharmed"
+                    result = 6  # Unharmed
                 else:
-                    estado = "False"
-                state_count.append(estado)
+                    result = "False"
+                state_count.append(result)
+            result = max(state_count, key=state_count.count)
+            confidence = state_count.count(result)
         else:
-            pass
-            # Verifica letras
+            predictions = net.predict([img])[0].flatten().tolist()
+            max_index = predictions.index(max(predictions))
+            predicted_label = labels[max_index]
+            predicted_prob = int(predictions[max_index] * 100)
+
+            if predicted_prob > 90:
+                if predicted_label == "U":
+                    result = 4
+                elif predicted_label == "S":
+                    result = 5
+                elif predicted_label == "H":
+                    result = 6
+                confidence = predicted_prob
+        if result != 0 and confidence > 20:
+            buffer[0] = result
+            buffer[1] = confidence
+            ledR.on()
+        else:
+            buffer[0] = 0
+            buffer[1] = 0
+
+        enviar_i2c()
+        gc.collect()
 
     img.draw_image(img_color, 0, 0)
     print("FPS:", clock.fps())

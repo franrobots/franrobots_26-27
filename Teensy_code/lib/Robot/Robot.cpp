@@ -42,9 +42,6 @@ void Robot::turnRight(int16_t speed) {
   move_tank(0, -speed);
 }
 
-
-
-
 void Robot::stop(bool brake) {
   _mFL->stopMotor(brake);
   _mRL->stopMotor(brake);

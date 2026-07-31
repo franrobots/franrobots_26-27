@@ -9,7 +9,7 @@ motor mRL(Ain1_M4, Ain2_M4, PWM_M2);
 Robot base(mFR, mRR, mFL, mRL);
 
 void setup() {
-  base.begin(12, 20000);
+  base.begin(12, 30000);
   mFL.setDeadband(800);
   mRL.setDeadband(800);
   mFR.setDeadband(800);

@@ -22,8 +22,8 @@ uint32_t LedStrip::colorToRGB(LedColor c) {
 }
 
 void LedStrip::applySide(LedSide side, uint32_t rgb) {
-  if (side == LedSide::MIDDLE) {
-    for (uint16_t i = 4; i < 10; i++)
+  if (side == LedSide::ALL) {
+    for (uint16_t i = 0; i < _nLeds; i++)
       _strip.setPixelColor(i, rgb);
   }
   else if (side == LedSide::LEFT) {
@@ -45,7 +45,7 @@ void LedStrip::setColor(LedSide side, LedColor color) {
 }
 
 void LedStrip::clear() {
-  for (uint16_t i = 4; i < 10; i++)
+  for (uint16_t i = 0; i < _nLeds; i++)
     _strip.setPixelColor(i, 0);
   _strip.show();
 }
