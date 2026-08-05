@@ -42,7 +42,7 @@ int32_t Encoder::readAndReset() {
 
 void Encoder::handleISR() {
   int Lstate = digitalRead(_pinA);
-  if (Lstate == LOW && _lastStateA == HIGH) {
+  if (Lstate == HIGH && _lastStateA == LOW) {
     val = digitalRead(_pinB);
     if (val == LOW && direcao) {
       direcao = false;
@@ -52,7 +52,7 @@ void Encoder::handleISR() {
   }
   _lastStateA = Lstate;
   
-  if (digitalRead(_pinB) == LOW) {
+  if (!direcao) {
     _ticks++;  // Sentido horário / Frente
   } else {
     _ticks--;  // Sentido anti-horário / Trás

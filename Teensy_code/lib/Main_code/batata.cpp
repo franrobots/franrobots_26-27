@@ -28,12 +28,14 @@ Encoder encRR(ENC2_A, ENC2_B);
 OpenMVCamera camL(OPENMVL);
 OpenMVCamera camR(OPENMVR);
 
-motor mFL(Ain1_M3, Ain2_M3, PWM_M1);
-motor mRL(Ain1_M4, Ain2_M4, PWM_M2);
-motor mFR(Ain1_M1, Ain2_M1, PWM_M3);
-motor mRR(Ain1_M2, Ain2_M2, PWM_M4);
+motor mFL(Ain1_M3, Ain2_M3);
+motor mRL(Ain1_M4, Ain2_M4);
+motor mFR(Ain1_M1, Ain2_M1);
+motor mRR(Ain1_M2, Ain2_M2);
 Robot robotBase(mFL, mRL, mFR, mRR);
-LedStrip ledStrip(LED_STRIP, 5);
+LedStrip led_LEFT(LED_LEFT, 3);
+LedStrip led_MIDDLE(LED_MIDDLE, 7);
+LedStrip led_RIGHT(LED_RIGHT, 3);
 ServoKit servoKit;
 SwitchAvoidance bumper(SW_LEFT, SW_RIGHT);
 
@@ -59,7 +61,7 @@ static void handleSwitchObstacle(SwitchEvent ev) {
   if (ev == SwitchEvent::NONE) return;
 
   robotBase.stop(true);
-  ledStrip.setColor(LedSide::ALL, LedColor::RED);
+  led_MIDDLE.setColor(LedSide::ALL, LedColor::RED);
 
   // Back off from obstacle.
   robotBase.move_tank(-SWITCH_BACK_PWM, 0);
@@ -80,7 +82,7 @@ static void handleSwitchObstacle(SwitchEvent ev) {
   }
 
   robotBase.stop(true);
-  ledStrip.clear();
+  led_MIDDLE.clear();
 }
 
 static TileType toTileType(FloorColor c) {
@@ -119,7 +121,9 @@ void setup() {
   encRR.begin(true);
   bumper.begin(true);
   robotBase.begin(PWM_RESOLUTION, PWM_FREQUENCY);
-  ledStrip.begin();
+  led_LEFT.begin();
+  led_MIDDLE.begin();
+  led_RIGHT.begin();
   servoKit.begin(SERVO_PIN, SERVO_MIN_US, SERVO_MAX_US);
   servoKit.setAngles(SERVO_CENTER_DEG, SERVO_LEFT_DROP_DEG, SERVO_RIGHT_DROP_DEG);
   servoKit.setTiming(SERVO_MOVE_DELAY_MS, SERVO_BETWEEN_KITS_MS);
@@ -152,7 +156,7 @@ void setup() {
 
     if (mode == 't' || mode == 'a') {
       Serial.println("Calibrando ToF...");
-      ToFCalibration::run(tof, BUTTON_PIN, ledStrip);
+      ToFCalibration::run(tof, BUTTON_PIN, led_MIDDLE);
     }
     if (mode == 'c' || mode == 'a') {
       Serial.println("Calibrando cor...");
@@ -169,7 +173,11 @@ void setup() {
   controller.begin(0, 0, Heading::NORTH);
   controller.setTicksPerTile(ENCODER_TICKS_PER_TILE);
 
+  led_LEFT.setColor(LedSide::ALL, LedColor::WHITE);
+  led_RIGHT.setColor(LedSide::ALL, LedColor::WHITE);
+
   Serial.println("Sistema pronto.");
+  Serial.println("Deus abençoe o round.");
 }
 
 void loop() {
@@ -200,12 +208,12 @@ void loop() {
     if (millis() - pauseLedToggleMs >= PAUSE_LED_INTERVAL_MS) {
       pauseLedToggleMs = millis();
       pauseLedOn = !pauseLedOn;
-      if (pauseLedOn) ledStrip.setColor(LedSide::ALL, LedColor::RED);
-      else ledStrip.clear();
+      if (pauseLedOn) led_MIDDLE.setColor(LedSide::ALL, LedColor::RED);
+      else led_MIDDLE.clear();
     }
     if (debouncedReleased) {
       pauseByButton = false;
-      ledStrip.clear();
+      led_MIDDLE.clear();
       Serial.println("Botao: navegacao retomada.");
     }
     return;
@@ -260,9 +268,9 @@ void loop() {
     const LedSide side = chooseLeft ? LedSide::LEFT : LedSide::RIGHT;
     const uint8_t victimType = chooseLeft ? in.victimLeft : in.victimRight;
     robotBase.stop(true);
-    ledStrip.setColor(side, LedColor::YELLOW);
+    led_MIDDLE.setColor(side, LedColor::YELLOW);
     servoKit.dropForVictim(chooseLeft ? ServoDropSide::LEFT : ServoDropSide::RIGHT, victimType);
-    ledStrip.clear();
+    led_MIDDLE.clear();
 
     nextVictimActionAtMs = millis() + VICTIM_ACTION_COOLDOWN_MS;
     victimActionTaken = true;
