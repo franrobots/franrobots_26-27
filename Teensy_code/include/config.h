@@ -26,17 +26,17 @@ constexpr uint8_t I2C_SCL = 19;
 // MUDAR PARA TER CERTEZA COM A SPIRLA
 
 // Direito Frente (M1)
-constexpr uint8_t Ain1_M1 = 29;
-constexpr uint8_t Ain2_M1 = 25;
+constexpr uint8_t Ain1_M1 = 6;
+constexpr uint8_t Ain2_M1 = 7;
 // Direito tras (M2)
 constexpr uint8_t Ain1_M2 = 8;
 constexpr uint8_t Ain2_M2 = 9;
 // Esquerdo Frente (M1)
-constexpr uint8_t Ain1_M3 = 6;
-constexpr uint8_t Ain2_M3 = 7;
+constexpr uint8_t Ain1_M3 = 24;
+constexpr uint8_t Ain2_M3 = 28;
 // Esquerdo tras (M2)
-constexpr uint8_t Ain1_M4 = 8;
-constexpr uint8_t Ain2_M4 = 9;
+constexpr uint8_t Ain1_M4 = 25;
+constexpr uint8_t Ain2_M4 = 29;
 
 
 // ======================================================

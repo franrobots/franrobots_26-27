@@ -11,11 +11,11 @@ void Encoder::begin(bool pullup) {
 
   if (_instance0 == nullptr) {
     _instance0 = this;
-    attachInterrupt(digitalPinToInterrupt(_pinA), Encoder::isr0, RISING);
+    attachInterrupt(digitalPinToInterrupt(_pinA), Encoder::isr0, CHANGE);
   }
   else if (_instance1 == nullptr) {
     _instance1 = this;
-    attachInterrupt(digitalPinToInterrupt(_pinA), Encoder::isr1, RISING);
+    attachInterrupt(digitalPinToInterrupt(_pinA), Encoder::isr1, CHANGE);
   }
 }
 

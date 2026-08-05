@@ -2,10 +2,10 @@
 #include "Motor.h"
   
 
-motor m(Ain1_M1, Ain2_M1, PWM_M1);
+motor m(Ain1_M1, Ain2_M1);
 
 void setup() {
-  m.begin(12, 20000);
+  m.begin(12, 30000);
   m.setDeadband(800);
 }
 
