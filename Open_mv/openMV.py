@@ -4,7 +4,6 @@ from machine import LED
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
 sensor.set_framesize(sensor.QQVGA)
-sensor.set_windowing((150, 320))
 sensor.skip_frames(time=2000)
 sensor.set_auto_whitebal(False)
 sensor.set_auto_gain(False, gain_db=12)
@@ -87,13 +86,13 @@ def classificar_cor(stats1, stats2, stats3, stats4, l_fundo):
         return "Branco"
 
     cor = "Indefinida"
-    menor_distancia = 1000
+    menor_distancia = 1000000
 
     for nome, (rL, rA, rB) in CORES_REF.items():
         if nome in ["Branco", "Preto"]:
             continue
 
-        dist = ((L - rL)**2 + (3.5 * (A - rA))**2 + (3.5 * (B - rB))**2)**0.5
+        dist = ((L - rL)**2 + (3.5 * (A - rA))**2 + (3.5 * (B - rB))**2)
 
         if dist < menor_distancia:
             menor_distancia = dist
@@ -169,7 +168,7 @@ def enviar_i2c():
         else:
             print(f"[I2C] Comando inválido: {cmd}")
     except Exception as e:
-        pass
+        print(f"[I2C] Erro: {e}")
 
 
 try:
@@ -183,61 +182,83 @@ while True:
     clock.tick()
     img = sensor.snapshot()
 
-    img_color = img.copy()
     if calibration_mode:
-        show_calibrate(img_color)
+        show_calibrate(img)
         pyb.delay(500)
     else:
-        stats_cal = img_color.get_statistics(roi=CAL_ROI)
-        L_fundo = stats_cal.l_mean
-        thres_geral = (0, int(L_fundo - 5), -128, 127, -128, 127)
-        thres_amarelo = (50, 100, -128, 127, 10, 127)
-        img.gaussian(1)
-        img.binary([thres_geral, thres_amarelo], invert=False)
-        img.erode(5)
-        img.dilate(4)
-        img_color.draw_rectangle(CAL_ROI, color=(0, 255, 0))
-        cores = circulo()
+        predictions = net.predict([img])[0].flatten().tolist()
+        max_index = predictions.index(max(predictions))
+        predicted_label = labels[max_index]
+        predicted_prob = int(predictions[max_index] * 100)
+        result = 0
+        confidence = 0
 
-        if cores:
-            while not len(estado) > 99:
+        # Se tivermos mais de 90% de certeza que é uma letra válida
+        if predicted_prob > 90 and predicted_label in ["Omega", "Psi", "Phi"]:
+            if predicted_label == "Phi":     # Vítima ferida (Harmed)
+                result = 4
+            elif predicted_label == "Psi":   # Vítima estável (Stable)
+                result = 5
+            elif predicted_label == "Omega":  # Vítima ilesa (Unharmed)
+                result = 6
+
+            confidence = predicted_prob
+            state_count.clear()  # Limpa o histórico de círculos para não misturar leituras
+
+        else:
+            # Aplicamos os filtros APENAS se não encontramos letras
+            img_color = img.copy()
+            stats_cal = img_color.get_statistics(roi=CAL_ROI)
+            L_fundo = stats_cal.l_mean
+            thres_geral = (0, int(L_fundo - 5), -128, 127, -128, 127)
+            thres_amarelo = (50, 100, -128, 127, 10, 127)
+            result = 0
+            confidence = 0
+
+            img.gaussian(1)
+            img.binary([thres_geral, thres_amarelo], invert=False)
+            img.erode(2)
+            img.dilate(1)
+            img_color.draw_rectangle(CAL_ROI, color=(0, 255, 0))
+
+            cores = circulo()
+
+            if cores:
+                vitima = 0  # Reseta a contagem da vítima para este frame
                 for i in range(len(cores)):
                     if cores[i] == "Azul":
                         vitima += 2
                     elif cores[i] == "Verde":
                         vitima += 1
                     elif cores[i] == "Amarelo":
-                        continue
+                        vitima += 0
                     elif cores[i] == "Vermelho":
                         vitima -= 1
-                    else:
+                    elif cores[i] == "Preto":
                         vitima -= 2
 
+                # Classifica a vítima com base na soma dos anéis
                 if vitima == 2:
-                    result = 4  # Harmed
+                    frame_result = 4  # Harmed
                 elif vitima == 1:
-                    result = 5  # Stable
+                    frame_result = 5  # Stable
                 elif vitima == 0:
-                    result = 6  # Unharmed
+                    frame_result = 6  # Unharmed
                 else:
-                    result = "False"
-                state_count.append(result)
-            result = max(state_count, key=state_count.count)
-            confidence = state_count.count(result)
-        else:
-            predictions = net.predict([img])[0].flatten().tolist()
-            max_index = predictions.index(max(predictions))
-            predicted_label = labels[max_index]
-            predicted_prob = int(predictions[max_index] * 100)
+                    frame_result = 0  # Falso
 
-            if predicted_prob > 90:
-                if predicted_label == "U":
-                    result = 4
-                elif predicted_label == "S":
-                    result = 5
-                elif predicted_label == "H":
-                    result = 6
-                confidence = predicted_prob
+                # Sistema de votação usando frames contínuos
+                if frame_result != 0:
+                    state_count.append(frame_result)
+                    if len(state_count) > 25:
+                        state_count.pop(0)
+                    # Acha o resultado mais frequente no histórico
+                    result = max(set(state_count), key=state_count.count)
+                    # Calcula uma confiança baseada na consistência das últimas leituras
+                    confidence = int((state_count.count(result) / len(state_count)) * 100)
+                img.draw_image(img_color, 0, 0)
+                del img_color
+
         if result != 0 and confidence > 20:
             buffer[0] = result
             buffer[1] = confidence
@@ -245,9 +266,9 @@ while True:
         else:
             buffer[0] = 0
             buffer[1] = 0
+            ledR.off()
 
         enviar_i2c()
         gc.collect()
 
-    img.draw_image(img_color, 0, 0)
     print("FPS:", clock.fps())
