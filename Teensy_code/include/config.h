@@ -32,11 +32,11 @@ constexpr uint8_t Ain2_M1 = 7;
 constexpr uint8_t Ain1_M2 = 8;
 constexpr uint8_t Ain2_M2 = 9;
 // Esquerdo Frente (M1)
-constexpr uint8_t Ain1_M3 = 24;
-constexpr uint8_t Ain2_M3 = 28;
+constexpr uint8_t Ain1_M3 = 2; // 2 era 24
+constexpr uint8_t Ain2_M3 = 3; // 3 era 28
 // Esquerdo tras (M2)
-constexpr uint8_t Ain1_M4 = 25;
-constexpr uint8_t Ain2_M4 = 29;
+constexpr uint8_t Ain1_M4 = 4; // 4  era 25
+constexpr uint8_t Ain2_M4 = 5; // 5 era 29
 
 
 // ======================================================
@@ -54,11 +54,11 @@ constexpr uint8_t Ain2_M4 = 29;
 // 🟢 ENCODERS (1 CANAL POR MOTOR)
 // ======================================================
 
-constexpr uint8_t ENC1_A = 20;
-constexpr uint8_t ENC1_B = 22; // Mudar com a spirla
+constexpr uint8_t ENC1_A = 21;
+constexpr uint8_t ENC1_B = 22;
 
-constexpr uint8_t ENC2_A = 21;
-constexpr uint8_t ENC2_B = 24; // Mudar com a spirla
+constexpr uint8_t ENC2_A = 26;
+constexpr uint8_t ENC2_B = 20;
 
 
 // ======================================================
@@ -72,9 +72,9 @@ constexpr uint8_t SERVO_PIN = 10;
 // 🟣 FITA LED (WS2812)
 // ======================================================
 
-constexpr uint8_t LED_LEFT = 11;
-constexpr uint8_t LED_MIDDLE = 32;
-constexpr uint8_t LED_RIGHT = 33;
+constexpr uint8_t LED_LEFT = 32;
+constexpr uint8_t LED_MIDDLE = 33;
+constexpr uint8_t LED_RIGHT = 11;
 
 
 // ======================================================
@@ -156,5 +156,6 @@ constexpr bool DEBUG_SERIAL         = true;
 // ======================================================
 constexpr uint8_t TCA_A = 0x70;
 constexpr uint8_t TCA_B = 0x71;
-constexpr uint8_t OPENMVL = 0x10;
-constexpr uint8_t OPENMVR = 0x11;
+constexpr uint8_t OPENMVL = 0x12;
+constexpr uint8_t OPENMVR = 0x13;
+constexpr uint8_t BNO055_ADDRESS = 0x28;
