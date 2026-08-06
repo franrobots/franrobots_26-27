@@ -29,14 +29,14 @@ constexpr uint8_t I2C_SCL = 19;
 constexpr uint8_t Ain1_M1 = 6;
 constexpr uint8_t Ain2_M1 = 7;
 // Direito tras (M2)
-constexpr uint8_t Ain1_M2 = 8;
-constexpr uint8_t Ain2_M2 = 9;
+constexpr uint8_t Ain1_M2 = 9;
+constexpr uint8_t Ain2_M2 = 8;
 // Esquerdo Frente (M1)
 constexpr uint8_t Ain1_M3 = 2; // 2 era 24
 constexpr uint8_t Ain2_M3 = 3; // 3 era 28
 // Esquerdo tras (M2)
-constexpr uint8_t Ain1_M4 = 4; // 4  era 25
-constexpr uint8_t Ain2_M4 = 5; // 5 era 29
+constexpr uint8_t Ain1_M4 = 5; // 5  era 25
+constexpr uint8_t Ain2_M4 = 4; // 4 era 29
 
 
 // ======================================================

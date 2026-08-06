@@ -2,10 +2,10 @@
 #include "Motor.h"
 #include "Robot.h"
 
-motor mFR(Ain1_M1, Ain2_M1, PWM_M3);
-motor mRR(Ain1_M2, Ain2_M2, PWM_M2);
-motor mFL(Ain1_M3, Ain2_M3, PWM_M1);
-motor mRL(Ain1_M4, Ain2_M4, PWM_M2);
+motor mFR(Ain1_M1, Ain2_M1);
+motor mRR(Ain1_M2, Ain2_M2);
+motor mFL(Ain1_M3, Ain2_M3);
+motor mRL(Ain1_M4, Ain2_M4);
 Robot base(mFR, mRR, mFL, mRL);
 
 void setup() {

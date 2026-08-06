@@ -21,7 +21,7 @@ ScanToF12 raw;
 static const uint8_t kFloorPins[] = {C9_PIN, LDR_BLUE, LDR_RED, LDR_GREEN};
 ReflectancePlate floorSensor(kFloorPins, 4);
 
-BNO055_FranRobots imub(0x29);
+BNO055_FranRobots imub(BNO055_ADDRESS);
 Encoder encFL(ENC1_A, ENC1_B);
 Encoder encRR(ENC2_A, ENC2_B);
 
@@ -101,6 +101,11 @@ void setup() {
   Serial.println("Sistema iniciando...");
   delay(3000);
 
+  if (!imub.begin(Wire, 400000)) {
+    Serial.println("Aviso: BNO055 nao respondeu.");
+  } else {
+    imub.zeroYaw();
+  }
  
   if (!tof.begin(Wire, 400000, 40)) {
     Serial.println("Erro ToF");
@@ -128,12 +133,6 @@ void setup() {
   servoKit.setAngles(SERVO_CENTER_DEG, SERVO_LEFT_DROP_DEG, SERVO_RIGHT_DROP_DEG);
   servoKit.setTiming(SERVO_MOVE_DELAY_MS, SERVO_BETWEEN_KITS_MS);
   servoKit.setVictimKitMap(0, 1, 2); // Ajuste IDs conforme protocolo OpenMV.
-
-  if (!imub.begin(Wire, 400000)) {
-    Serial.println("Aviso: BNO055 nao respondeu.");
-  } else {
-    imub.zeroYaw();
-  }
 
   if (!camL.begin(400000)) Serial.println("Aviso: OpenMV Left sem ACK.");
   if (!camR.begin(400000)) Serial.println("Aviso: OpenMV Right sem ACK.");
