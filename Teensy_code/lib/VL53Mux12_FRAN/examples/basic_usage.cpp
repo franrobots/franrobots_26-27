@@ -8,7 +8,7 @@
 #define TCA1_ADDR 0x70
 #define TCA2_ADDR 0x71
 
-#define NUM_SENSORS 12
+#define NUM_SENSORS 11
 
 // ================================
 // MAPA DOS SENSORES
@@ -26,13 +26,11 @@ SensorMap sensors[NUM_SENSORS] = {
   {TCA1_ADDR, 3, "S4"},
   {TCA1_ADDR, 4, "S5"},
   {TCA1_ADDR, 5, "S6"},
-  {TCA1_ADDR, 6, "S7"},
-
+  {TCA1_ADDR, 7, "S7"},
   {TCA2_ADDR, 0, "S8"},
-  {TCA2_ADDR, 1, "S9"},
-  {TCA2_ADDR, 2, "S10"},
-  {TCA2_ADDR, 3, "S11"},
-  {TCA2_ADDR, 4, "S12"}
+  {TCA2_ADDR, 2, "S9"},
+  {TCA2_ADDR, 1, "S10"},
+  {TCA2_ADDR, 4, "S11"},
 };
 
 // ================================
@@ -72,6 +70,11 @@ void initSensors() {
 
   for (int i = 0; i < NUM_SENSORS; i++) {
 
+  tcaDisable(TCA1_ADDR);
+  tcaDisable(TCA2_ADDR);
+
+  delayMicroseconds(100);
+
     Serial.print("Init ");
     Serial.print(sensors[i].name);
     Serial.print(" -> MUX 0x");
@@ -80,13 +83,17 @@ void initSensors() {
     Serial.println(sensors[i].channel);
 
     tcaSelect(sensors[i].mux, sensors[i].channel);
-    delay(10);
+    delayMicroseconds(100);
 
     lox[i].setTimeout(50);
 
     if (!lox[i].init()) {
       Serial.println("❌ Falha");
       ok[i] = false;
+
+      tcaDisable(TCA1_ADDR);
+      tcaDisable(TCA2_ADDR);
+
       continue;
     }
 
@@ -96,6 +103,11 @@ void initSensors() {
 
     ok[i] = true;
     Serial.println("✅ OK");
+
+    tcaDisable(TCA1_ADDR);
+    tcaDisable(TCA2_ADDR);
+    delay(10);
+
   }
 
   tcaDisable(TCA1_ADDR);
@@ -109,7 +121,14 @@ uint16_t readSensor(uint8_t i) {
 
   if (!ok[i]) return 0;
 
+  tcaDisable(TCA1_ADDR);
+  tcaDisable(TCA2_ADDR);
+
+  delayMicroseconds(100);
+
   tcaSelect(sensors[i].mux, sensors[i].channel);
+
+    delayMicroseconds(100);
 
   uint16_t d = lox[i].readRangeContinuousMillimeters();
 
@@ -137,7 +156,12 @@ void printAll(uint16_t *dist) {
 
   for (int i = 0; i < NUM_SENSORS; i++) {
     Serial.print(sensors[i].name);
-    Serial.print(": ");
+    Serial.print(" Mux: ");
+    Serial.print(sensors[i].mux);
+    Serial.print(" Channel: ");
+    Serial.print(sensors[i].channel);
+    Serial.print(" Distance: ");
+    
 
     if (dist[i] == 0) {
       Serial.println("ERRO");
@@ -172,5 +196,5 @@ void loop() {
 
   printAll(dist);
 
-  delay(100);
+  delay(10);
 }

@@ -113,7 +113,7 @@ void setup() {
   tof.setEmaAlpha(0.25f);
 
   floorSensor.begin(ADC_RESOLUTION);
-  floorSensor.setDecisionChannels(0, 3); // C9 = idx0, canal auxiliar = idx3
+  floorSensor.setDecisionChannels(0, 2); // C9 = idx0, canal auxiliar = idx3
   floorSensor.setMatchMode(ReflectanceMatchMode::RATIO);
   floorSensor.setRatioThresholdScale(1000.0f);
   floorSensor.setEmaAlpha(0.30f);
@@ -235,7 +235,7 @@ void loop() {
   tof.snapshot(raw);
   scan.s = raw;
 
-  floorSensor.read(5, 150);
+  floorSensor.read(1, 200);
   FloorColor floor = floorSensor.detect();
 
   CameraData leftCam = camL.read(15, 0);
