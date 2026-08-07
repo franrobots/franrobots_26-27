@@ -112,10 +112,38 @@ bool ReflectancePlate::match(const ColorThreshold& t) const {
   return true;
 }
 
+bool ReflectancePlate::matchRed(const ColorThreshold& t)const{
+if(_count < 4)return false;
+//canais 
+// 0 = C9
+// 1 = R
+// 2 = G
+// 3 = B
+
+const uint16_t c9 = _values[0];
+const uint16_t red = _values[1];
+const uint16_t green = _values[2];
+const uint16_t blue = _values[3];
+//evita divisão por 0
+if(green == 0)return false;
+
+const float ratio = ((float)c9 / (float)green * _ratioScale);
+
+//faixa do vermelho no ratio
+if(ratio < 135.0f || ratio > 165.0f) return false;
+//faixa observada no canal R para vermelho
+if(red <500 || red > 9000) return false;
+//faixa observada no canal B para o vermelho
+if(blue <150 || blue >350) return false;
+
+return true;
+
+}
+
 FloorColor ReflectancePlate::detect() const {
   if (match(_black))  return FloorColor::BLACK;
   if (match(_blue))   return FloorColor::BLUE;
-  if (match(_red))    return FloorColor::RED;
+  if (matchRed(_red))    return FloorColor::RED;
   if (match(_silver)) return FloorColor::SILVER;
   return FloorColor::UNKNOWN;
 }

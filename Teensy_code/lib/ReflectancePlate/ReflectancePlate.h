@@ -74,5 +74,6 @@ private:
   ColorThreshold _black {0,0,0,0,0};
 
   bool match(const ColorThreshold& t) const;
+  bool matchRed(const ColorThreshold& t)const;
   float getTilt() const;
 };

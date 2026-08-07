@@ -21,7 +21,7 @@ ScanToF12 raw;
 static const uint8_t kFloorPins[] = {C9_PIN, LDR_BLUE, LDR_RED, LDR_GREEN};
 ReflectancePlate floorSensor(kFloorPins, 4);
 
-BNO055_FranRobots imub(0x29);
+BNO055_FranRobots imub(BNO055_ADDRESS);
 Encoder encFL(ENC1_A, ENC1_B);
 Encoder encRR(ENC2_A, ENC2_B);
 
@@ -97,10 +97,15 @@ static TileType toTileType(FloorColor c) {
 
 void setup() {
   Serial.begin(115200);
-  delay(10000);
+  delay(5000);
   Serial.println("Sistema iniciando...");
   delay(3000);
 
+  if (!imub.begin(Wire, 400000)) {
+    Serial.println("Aviso: BNO055 nao respondeu.");
+  } else {
+    imub.zeroYaw();
+  }
  
   if (!tof.begin(Wire, 400000, 40)) {
     Serial.println("Erro ToF");
@@ -120,20 +125,21 @@ void setup() {
   encFL.begin(true);
   encRR.begin(true);
   bumper.begin(true);
+
+  
   robotBase.begin(PWM_RESOLUTION, PWM_FREQUENCY);
   led_LEFT.begin();
   led_MIDDLE.begin();
   led_RIGHT.begin();
+
+  led_LEFT.setColor(LedSide::ALL, LedColor::WHITE);
+  led_RIGHT.setColor(LedSide::ALL, LedColor::WHITE);
+
+
   servoKit.begin(SERVO_PIN, SERVO_MIN_US, SERVO_MAX_US);
   servoKit.setAngles(SERVO_CENTER_DEG, SERVO_LEFT_DROP_DEG, SERVO_RIGHT_DROP_DEG);
   servoKit.setTiming(SERVO_MOVE_DELAY_MS, SERVO_BETWEEN_KITS_MS);
   servoKit.setVictimKitMap(0, 1, 2); // Ajuste IDs conforme protocolo OpenMV.
-
-  if (!imub.begin(Wire, 400000)) {
-    Serial.println("Aviso: BNO055 nao respondeu.");
-  } else {
-    imub.zeroYaw();
-  }
 
   if (!camL.begin(400000)) Serial.println("Aviso: OpenMV Left sem ACK.");
   if (!camR.begin(400000)) Serial.println("Aviso: OpenMV Right sem ACK.");
@@ -144,24 +150,24 @@ void setup() {
     char mode = 't';
     const uint32_t t0 = millis();
     while (millis() - t0 < 8000) {
-      if (Serial.available()) {
-        const char c = (char)Serial.read();
-        if (c == 't' || c == 'T' || c == 'c' || c == 'C' || c == 'a' || c == 'A') {
-          mode = (c >= 'A' && c <= 'Z') ? (char)(c - 'A' + 'a') : c;
-          break;
-        }
-      }
-      delay(10);
+      // if (Serial.available()) {
+      //   const char c = (char)Serial.read();
+      //   if (c == 't' || c == 'T' || c == 'c' || c == 'C' || c == 'a' || c == 'A') {
+      //     mode = (c >= 'A' && c <= 'Z') ? (char)(c - 'A' + 'a') : c;
+      //     break;
+      //   }
+      // }
+      // delay(10);
     }
 
-    if (mode == 't' || mode == 'a') {
-      Serial.println("Calibrando ToF...");
-      ToFCalibration::run(tof, BUTTON_PIN, led_MIDDLE);
-    }
-    if (mode == 'c' || mode == 'a') {
-      Serial.println("Calibrando cor...");
-      ColorCalibration::run(floorSensor, BUTTON_PIN, 0, 3, true, 1000.0f);
-    }
+    // if (mode == 't' || mode == 'a') {
+    //   Serial.println("Calibrando ToF...");
+    //   ToFCalibration::run(tof, BUTTON_PIN, led_MIDDLE);
+    // }
+    // if (mode == 'c' || mode == 'a') {
+    //   Serial.println("Calibrando cor...");
+    //   ColorCalibration::run(floorSensor, BUTTON_PIN, 0, 3, true, 1000.0f);
+    // }
   }
   ToFCalibration::load(tof);
   if (ColorCalibration::load(floorSensor)) {
@@ -173,15 +179,14 @@ void setup() {
   controller.begin(0, 0, Heading::NORTH);
   controller.setTicksPerTile(ENCODER_TICKS_PER_TILE);
 
-  led_LEFT.setColor(LedSide::ALL, LedColor::WHITE);
-  led_RIGHT.setColor(LedSide::ALL, LedColor::WHITE);
+
 
   Serial.println("Sistema pronto.");
   Serial.println("Deus abençoe o round.");
 }
 
 void loop() {
-
+  led_MIDDLE.update();
   const bool buttonNow = digitalRead(BUTTON_PIN);
   if (buttonNow != lastButtonRead) {
     lastButtonRead = buttonNow;
