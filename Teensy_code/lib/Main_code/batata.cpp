@@ -18,7 +18,7 @@ VL53Mux12_FRAN tof(TCA_A, TCA_B);
 Scan360 scan;
 ScanToF12 raw;
  
-static const uint8_t kFloorPins[] = {C9_PIN, LDR_BLUE, LDR_RED, LDR_GREEN};
+static const uint8_t kFloorPins[] = {C9_PIN, LDR_RED,LDR_GREEN, LDR_BLUE};
 ReflectancePlate floorSensor(kFloorPins, 4);
 
 BNO055_FranRobots imub(BNO055_ADDRESS);

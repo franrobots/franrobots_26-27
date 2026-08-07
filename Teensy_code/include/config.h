@@ -90,10 +90,10 @@ constexpr uint8_t SW_LEFT    = 13;   // LED interno onboard
 // 🟤 SENSORES ANALÓGICOS (ADC)
 // ======================================================
 
-constexpr uint16_t C9_PIN    = A0;   // pin 14
-constexpr uint16_t LDR_BLUE  = A1;   // pin 15
-constexpr uint16_t LDR_RED   = A2;   // pin 16
+constexpr uint16_t C9_PIN    = A2;   // pin 16
+constexpr uint16_t LDR_RED   = A1;   // pin 15
 constexpr uint16_t LDR_GREEN = A3;   // pin 17
+constexpr uint16_t LDR_BLUE  = A0;   // pin 14
 
 
 // ======================================================

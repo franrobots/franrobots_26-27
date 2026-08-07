@@ -2,8 +2,8 @@
 #include "config.h"
 #include "ReflectancePlate.h"
 #include "LedStrip.h"
-
-const uint8_t pins[] = {A2, A1, A3, A0}; // C9, R, G, B (exemplo)
+const uint8_t pins[] = {C9_PIN, LDR_RED,LDR_GREEN, LDR_BLUE};
+// const uint8_t pins[] = {A2, A1, A3, A0}; // C9, R, G, B (exemplo)
 ReflectancePlate plate(pins, 4);
 LedStrip led_MIDDLE(LED_MIDDLE, 7);
 void led_show(FloorColor colornum);
