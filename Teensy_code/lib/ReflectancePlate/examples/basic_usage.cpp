@@ -9,7 +9,7 @@ LedStrip led_MIDDLE(LED_MIDDLE, 7);
 void led_show(FloorColor colornum);
 void setup() {
   Serial.begin(115200);
-  plate.begin(12);
+  plate.begin(ADC_RESOLUTION);
   plate.setEmaAlpha(0.30f);
   plate.setDecisionChannels(0, 2);
   plate.setMatchMode(ReflectanceMatchMode::RATIO);

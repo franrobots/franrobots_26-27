@@ -5,7 +5,7 @@
 motor m(Ain1_M1, Ain2_M1);
 
 void setup() {
-  m.begin(12, 30000);
+  m.begin(PWM_RESOLUTION, PWM_FREQUENCY);
   m.setDeadband(800);
 }
 
