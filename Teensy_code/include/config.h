@@ -17,13 +17,10 @@ Ambiente: PlatformIO
 
 constexpr uint8_t I2C_SDA = 18;
 constexpr uint8_t I2C_SCL = 19;
-
-
+constexpr uint16_t I2C_FREQUENCY = 400000;   // 400 kHz 
 // ======================================================
 // 🔴 MOTORES – DIREÇÃO (COMPARTILHADA POR PARES)
 // ======================================================
-
-// MUDAR PARA TER CERTEZA COM A SPIRLA
 
 // Direito Frente (M1)
 constexpr uint8_t Ain1_M1 = 6;
@@ -82,8 +79,8 @@ constexpr uint8_t LED_RIGHT = 11;
 // ======================================================
 
 constexpr uint8_t BUTTON_PIN = 23;   // suporta interrupção
-constexpr uint8_t SW_RIGHT   = 12;
-constexpr uint8_t SW_LEFT    = 13;   // LED interno onboard
+constexpr uint8_t SW_RIGHT   = 12;   // switch button right
+constexpr uint8_t SW_LEFT    = 13;   // switch button Left
 
 
 // ======================================================
@@ -101,8 +98,8 @@ constexpr uint16_t LDR_BLUE  = A0;   // pin 14
 // ======================================================
 
 // PWM
-constexpr uint16_t PWM_FREQUENCY = 30000;   // 20 kHz (ideal para motor)
-constexpr uint8_t  PWM_RESOLUTION = 12;      // 0–255
+constexpr uint16_t PWM_FREQUENCY = 30000;   // 30 kHz (ideal para motor)
+constexpr uint8_t  PWM_RESOLUTION = 12;      // 12 bita (ideal para motor)
 
 // ADC
 constexpr uint8_t  ADC_RESOLUTION = 12;     // 0–4095

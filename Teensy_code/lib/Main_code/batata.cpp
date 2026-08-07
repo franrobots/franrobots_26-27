@@ -101,13 +101,13 @@ void setup() {
   Serial.println("Sistema iniciando...");
   delay(3000);
 
-  if (!imub.begin(Wire, 400000)) {
+  if (!imub.begin(Wire, I2C_FREQUENCY)) {
     Serial.println("Aviso: BNO055 nao respondeu.");
   } else {
     imub.zeroYaw();
   }
  
-  if (!tof.begin(Wire, 400000, 40)) {
+  if (!tof.begin(Wire, I2C_FREQUENCY, 40)) {
     Serial.println("Erro ToF");
   }
   tof.setEmaAlpha(0.25f);
@@ -117,10 +117,10 @@ void setup() {
   floorSensor.setMatchMode(ReflectanceMatchMode::RATIO);
   floorSensor.setRatioThresholdScale(1000.0f);
   floorSensor.setEmaAlpha(0.30f);
-  floorSensor.setBlackThreshold({0, 650, 0, 650, 0.0f});
-  floorSensor.setBlueThreshold({651, 1700, 651, 1700, 0.0f});
-  floorSensor.setRedThreshold({1701, 3000, 1701, 3000, 0.0f});
-  floorSensor.setSilverThreshold({3001, 4095, 3001, 4095, 0.0f});
+  floorSensor.setBlueThreshold({20, 80, 0, 0, 0.0f});
+  floorSensor.setSilverThreshold({90, 130, 0, 0, 0.0f});
+  floorSensor.setRedThreshold({135, 160, 0, 0, 0.0f});
+  floorSensor.setBlackThreshold({230, 400, 0, 0, 0.0f});
 
   encFL.begin(true);
   encRR.begin(true);
@@ -141,13 +141,13 @@ void setup() {
   servoKit.setTiming(SERVO_MOVE_DELAY_MS, SERVO_BETWEEN_KITS_MS);
   servoKit.setVictimKitMap(0, 1, 2); // Ajuste IDs conforme protocolo OpenMV.
 
-  if (!camL.begin(400000)) Serial.println("Aviso: OpenMV Left sem ACK.");
-  if (!camR.begin(400000)) Serial.println("Aviso: OpenMV Right sem ACK.");
+  if (!camL.begin(I2C_FREQUENCY)) Serial.println("Aviso: OpenMV Left sem ACK.");
+  if (!camR.begin(I2C_FREQUENCY)) Serial.println("Aviso: OpenMV Right sem ACK.");
 
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   if (digitalRead(BUTTON_PIN) == LOW) {
     Serial.println("Modo calibracao (8s): 't'=ToF, 'c'=Cor, 'a'=Ambos");
-    char mode = 't';
+    // char mode = 't';
     const uint32_t t0 = millis();
     while (millis() - t0 < 8000) {
       // if (Serial.available()) {
