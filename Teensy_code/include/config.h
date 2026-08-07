@@ -17,7 +17,7 @@ Ambiente: PlatformIO
 
 constexpr uint8_t I2C_SDA = 18;
 constexpr uint8_t I2C_SCL = 19;
-constexpr uint16_t I2C_FREQUENCY = 400000;   // 400 kHz 
+constexpr uint32_t I2C_FREQUENCY = 400000;   // 400 kHz 
 // ======================================================
 // 🔴 MOTORES – DIREÇÃO (COMPARTILHADA POR PARES)
 // ======================================================
