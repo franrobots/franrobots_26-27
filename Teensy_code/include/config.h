@@ -26,8 +26,8 @@ constexpr uint32_t I2C_FREQUENCY = 400000;   // 400 kHz
 constexpr uint8_t Ain1_M1 = 6;
 constexpr uint8_t Ain2_M1 = 7;
 // Direito tras (M2)
-constexpr uint8_t Ain1_M2 = 9;
-constexpr uint8_t Ain2_M2 = 8;
+constexpr uint8_t Ain1_M2 = 8;
+constexpr uint8_t Ain2_M2 = 9;
 // Esquerdo Frente (M1)
 constexpr uint8_t Ain1_M3 = 2; // 2 era 24
 constexpr uint8_t Ain2_M3 = 3; // 3 era 28
@@ -111,9 +111,9 @@ constexpr uint16_t ADC_MAX_VALUE  = (1 << ADC_RESOLUTION) - 1;
 
 constexpr uint16_t SERVO_MIN_US = 1000;
 constexpr uint16_t SERVO_MAX_US = 2000;
-constexpr uint8_t SERVO_CENTER_DEG = 90;
-constexpr uint8_t SERVO_LEFT_DROP_DEG = 35;
-constexpr uint8_t SERVO_RIGHT_DROP_DEG = 145;
+//constexpr uint8_t SERVO_CENTER_DEG = 90;
+//constexpr uint8_t SERVO_LEFT_DROP_DEG = 35;
+//constexpr uint8_t SERVO_RIGHT_DROP_DEG = 145;
 constexpr uint16_t SERVO_MOVE_DELAY_MS = 250;
 constexpr uint16_t SERVO_BETWEEN_KITS_MS = 220;
 

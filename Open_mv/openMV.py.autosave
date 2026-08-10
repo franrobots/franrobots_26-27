@@ -252,7 +252,7 @@ while True:
                     # Sistema de votação usando frames contínuos
                     if frame_result != 0:
                         state_count.append(frame_result)
-                        if len(state_count) > 25:
+                        if len(state_count) > 15:
                             state_count.pop(0)
                     else:
                         if state_count:
@@ -265,8 +265,6 @@ while True:
         if result != 0 and confidence > 20:
             print(result)
             print(confidence)
-            print(predicted_label)
-            print(predicted_prob)
             if cores:
                 print(cores)
             '''buffer[0] = result

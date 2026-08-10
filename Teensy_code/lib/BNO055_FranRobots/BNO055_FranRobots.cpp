@@ -19,6 +19,7 @@ float BNO055_FranRobots::getYaw360() {
   imu::Vector<3> euler = _bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   float yaw = euler.x();
   yaw = wrap360(yaw - _yawOffset);
+  delayMicroseconds(100);
   return yaw;
 }
 

@@ -24,6 +24,7 @@ public:
   void begin();
   void update(); // chama no loop
 
+  void setBrightness(uint32_t intensity);
   void setColor(LedSide side, LedColor color);
   void clear();
 

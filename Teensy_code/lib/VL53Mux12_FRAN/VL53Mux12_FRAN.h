@@ -6,7 +6,7 @@
 enum class ToFId : uint8_t {
   FL, FC, FR,
   LF, LC, LB,
-  BL, BC, BR,
+  BL,     BR,
   RF, RC, RB,
   COUNT
 };
@@ -20,11 +20,13 @@ struct ScanToF12 {
 class VL53Mux12_FRAN {
 public:
   VL53Mux12_FRAN(uint8_t addrA, uint8_t addrB);
-
+  
   bool begin(TwoWire& wire = Wire, uint32_t i2cClock = 400000, uint16_t periodMs = 40);
   uint16_t readSensor(ToFId id);
   void readAll();
   bool update();
+  void printAll(const uint16_t* mm) const;
+  void printAll(const ScanToF12& scan) const;
   void snapshot(ScanToF12& out) const;
   void getSensorOk() const;
 

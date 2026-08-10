@@ -1,19 +1,64 @@
 #include "VL53Mux12_FRAN.h"
 
 namespace {
-constexpr uint8_t kSensorCount = (uint8_t)ToFId::COUNT;
+// constexpr uint8_t kSensorCount = (uint8_t)ToFId::COUNT;
 constexpr uint16_t kTimeoutMs = 50;
 constexpr uint32_t kTimingBudgetUs = 20000;
-const char* const kSensorNames[kSensorCount] = {
-  "FL", "FC", "FR",
-  "LF", "LC", "LB",
-  "BL", "BC", "BR",
-  "RF", "RC", "RB"
-};
+// const char* const kSensorNames[kSensorCount] = {
+//   "FL", "FC", "FR",
+//   "LF", "LC", "LB",
+//   "BL",       "BR",
+//   "RF", "RC", "RB"
+// };
 }
+constexpr uint16_t kSensorCount = 11;
+struct SensorMap {
+  uint8_t mux;
+  uint8_t channel;
+  const char* name;
+};
+
+#define TCA1_ADDR 0x70
+#define TCA2_ADDR 0x71
+
+SensorMap kSensorNames[kSensorCount] = {
+  {TCA1_ADDR, 0, "BR"}, // S1
+  {TCA1_ADDR, 1, "RB"}, // S2
+  {TCA1_ADDR, 2, "RC"}, // S3
+  {TCA1_ADDR, 3, "RF"}, // S4
+  {TCA1_ADDR, 4, "FR"}, // S5
+  {TCA1_ADDR, 5, "FC"}, // S6
+  {TCA1_ADDR, 7, "FL"}, // S7
+  {TCA2_ADDR, 0, "LF"}, // S8
+  {TCA2_ADDR, 2, "LC"}, // S9
+  {TCA2_ADDR, 4, "LB"}, // S10
+  {TCA2_ADDR, 1, "BL"}  // S11
+};
 
 VL53Mux12_FRAN::VL53Mux12_FRAN(uint8_t addrA, uint8_t addrB)
 : _addrA(addrA), _addrB(addrB) {}
+
+void VL53Mux12_FRAN::printAll(const uint16_t* dist) const {
+  Serial.println("\n===== DISTANCIAS =====");
+
+  for (int i = 0; i < kSensorCount; i++) {
+    Serial.print(kSensorNames[i].name);
+    Serial.print(" Mux: ");
+    Serial.print(kSensorNames[i].mux);
+    Serial.print(" Channel: ");
+    Serial.print(kSensorNames[i].channel);
+    Serial.print(" Distance: ");
+    
+
+    if (dist[i] == 0) {
+      Serial.println("ERRO");
+    } else {
+      Serial.print(dist[i]);
+      Serial.println(" mm");
+    }
+  }
+}
+
 
 void VL53Mux12_FRAN::tcaDisable(uint8_t addr) {
   if (!_wire) return;
@@ -28,9 +73,6 @@ void VL53Mux12_FRAN::tcaDisableAll() {
 }
 
 void VL53Mux12_FRAN::tcaSelect(uint8_t addr, uint8_t ch) {
-  if (!_wire) return;
-
-  // Mantem apenas um VL53L0X visivel no barramento por vez.
   tcaDisableAll();
   delayMicroseconds(100);
 
@@ -66,17 +108,22 @@ bool VL53Mux12_FRAN::begin(TwoWire& wire, uint32_t clk, uint16_t periodMs) {
   delay(10);
 
   for (uint8_t i = 0; i < kSensorCount; i++) {
-    const uint8_t mux = (i < 7) ? _addrA : _addrB;
-    const uint8_t ch = (i < 7) ? i : (uint8_t)(i - 7);
+    const uint8_t mux = kSensorNames[i].mux;
+    const uint8_t ch = kSensorNames[i].channel;
+
+    tcaDisableAll();
+    delayMicroseconds(100);
 
     tcaSelect(mux, ch);
-    delay(10);
+    delayMicroseconds(100);
 
     _sensor[i].setTimeout(kTimeoutMs);
 
     if (!_sensor[i].init()) {
       _sensorOk[i] = false;
       allOk = false;
+      tcaDisableAll();
+      delayMicroseconds(100);
       continue;
     }
 
@@ -93,7 +140,7 @@ bool VL53Mux12_FRAN::begin(TwoWire& wire, uint32_t clk, uint16_t periodMs) {
 
 void VL53Mux12_FRAN::getSensorOk() const {
   for (uint8_t i = 0; i < kSensorCount; i++) {
-    Serial.print(kSensorNames[i]);
+    Serial.print(kSensorNames[i].name);
     Serial.print(": ");
     Serial.println(_sensorOk[i] ? "OK" : "FAIL");
   }
@@ -110,8 +157,9 @@ bool VL53Mux12_FRAN::readSensorByIndex(uint8_t i) {
     return false;
   }
 
-  const uint8_t mux = (i < 7) ? _addrA : _addrB;
-  const uint8_t ch = (i < 7) ? i : (uint8_t)(i - 7);
+  const uint8_t mux = kSensorNames[i].mux;
+  //const uint8_t ch = (i < 7) ? i : (uint8_t)(i - 7);
+  const uint8_t ch = kSensorNames[i].channel;
 
   tcaSelect(mux, ch);
 

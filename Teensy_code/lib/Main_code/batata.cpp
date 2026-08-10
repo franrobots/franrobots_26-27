@@ -137,7 +137,7 @@ void setup() {
 
 
   servoKit.begin(SERVO_PIN, SERVO_MIN_US, SERVO_MAX_US);
-  servoKit.setAngles(SERVO_CENTER_DEG, SERVO_LEFT_DROP_DEG, SERVO_RIGHT_DROP_DEG);
+  //servoKit.setAngles(SERVO_CENTER_DEG, SERVO_LEFT_DROP_DEG, SERVO_RIGHT_DROP_DEG);
   servoKit.setTiming(SERVO_MOVE_DELAY_MS, SERVO_BETWEEN_KITS_MS);
   servoKit.setVictimKitMap(0, 1, 2); // Ajuste IDs conforme protocolo OpenMV.
 

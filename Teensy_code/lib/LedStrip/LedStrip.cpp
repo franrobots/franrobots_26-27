@@ -38,6 +38,11 @@ void LedStrip::applySide(LedSide side, uint32_t rgb) {
   }
 }
 
+void LedStrip::setBrightness(uint32_t intensity) {
+  _strip.setBrightness(intensity);
+  _strip.show();
+}
+
 void LedStrip::setColor(LedSide side, LedColor color) {
   clear();
   applySide(side, colorToRGB(color));
