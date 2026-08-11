@@ -67,11 +67,18 @@ void LedStrip::blink(LedSide side, LedColor color, uint8_t repetitions, uint16_t
 }
 
 void LedStrip::setpixel(LedSide side, uint8_t index, LedColor color) {
-  if (side == LedSide::LEFT && index < 2) {
+  if (side == LedSide::ALL) {
+    if (index < _nLeds) {
+      _strip.setPixelColor(index, colorToRGB(color));
+    }
+  }
+  else if (side == LedSide::LEFT && index < 2) {
     _strip.setPixelColor(index, colorToRGB(color));
-  }else if (side == LedSide::RIGHT && index < 2) {
+  } 
+  else if (side == LedSide::RIGHT && index < 2) {
     _strip.setPixelColor(index + 3, colorToRGB(color));
   }
+  _strip.show(); 
 }
 
 void LedStrip::update() {

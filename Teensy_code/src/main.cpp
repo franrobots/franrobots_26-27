@@ -151,7 +151,7 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   if (digitalRead(BUTTON_PIN) == LOW) {
     Serial.println("Modo calibracao (8s): 't'=ToF, 'c'=Cor, 'a'=Ambos");
-    // char mode = 't';
+    char mode = 't';
     const uint32_t t0 = millis();
     while (millis() - t0 < 8000) {
       // if (Serial.available()) {
@@ -164,10 +164,10 @@ void setup() {
       // delay(10);
     }
 
-    // if (mode == 't' || mode == 'a') {
-    //   Serial.println("Calibrando ToF...");
-    //   ToFCalibration::run(tof, BUTTON_PIN, led_MIDDLE);
-    // }
+    if (mode == 't' || mode == 'a') {
+      Serial.println("Calibrando ToF...");
+      ToFCalibration::run(tof, led_MIDDLE);
+    }
     // if (mode == 'c' || mode == 'a') {
     //   Serial.println("Calibrando cor...");
     //   ColorCalibration::run(floorSensor, BUTTON_PIN, 0, 3, true, 1000.0f);

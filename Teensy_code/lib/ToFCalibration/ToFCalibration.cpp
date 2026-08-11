@@ -2,8 +2,9 @@
 
 static constexpr uint32_t MAGIC = 0xDEADBEEF; 
 static constexpr uint8_t X_READINGS = 50;     
-struct Blob { //
-  uint32_t magic; //
+
+struct Blob { 
+  uint32_t magic; 
   int16_t offset[(uint8_t)ToFId::COUNT]; 
 };
 
@@ -13,18 +14,18 @@ struct SideConfig {
   uint8_t sensorIndices[4]; 
 };
 
+// Mapeamento estrito usando os enums do ToFId
 static const SideConfig LADOS[] = {
-  { 0, 4, {0, 1, 2, 3} },   
-  { 1, 4, {4, 5, 6, 7} },   
-  { 2, 3, {8, 9, 10} }  
+  { 0, 3, { (uint8_t)ToFId::LF, (uint8_t)ToFId::LC, (uint8_t)ToFId::LB } }, // Lado 0 (LED 0): ESQUERDA
+  { 1, 3, { (uint8_t)ToFId::FR, (uint8_t)ToFId::FC, (uint8_t)ToFId::FL } }, // Lado 1 (LED 1): FRENTE
+  { 2, 3, { (uint8_t)ToFId::RB, (uint8_t)ToFId::RC, (uint8_t)ToFId::RF } }, // Lado 2 (LED 2): DIREITA
+  { 3, 2, { (uint8_t)ToFId::BR, (uint8_t)ToFId::BL } }                    // Lado 3 (LED 3): TRÁS
 };
+
 constexpr uint8_t NUM_LADOS = sizeof(LADOS) / sizeof(LADOS[0]);
 
-void ToFCalibration::run(VL53Mux12_FRAN& tof, uint8_t buttonPin, LedStrip& ledStrip) {
-  pinMode(buttonPin, INPUT_PULLUP); 
-
+void ToFCalibration::run(VL53Mux12_FRAN& tof, LedStrip& ledStrip) {
   Blob blob; 
-  
   EEPROM.get(0, blob); 
   if (blob.magic != MAGIC) {
     blob.magic = MAGIC;
@@ -39,6 +40,7 @@ void ToFCalibration::run(VL53Mux12_FRAN& tof, uint8_t buttonPin, LedStrip& ledSt
     unsigned long lastBlinkMs = 0;
     bool ledOn = false;
     bool sideCalibrated = false;
+    uint8_t leiturasConfirmadas = 0;
 
     while (!sideCalibrated) {
       uint32_t agora = millis();
@@ -50,7 +52,6 @@ void ToFCalibration::run(VL53Mux12_FRAN& tof, uint8_t buttonPin, LedStrip& ledSt
         if (ledOn) {
           ledStrip.setpixel(LedSide::ALL, lado.ledIndex, LedColor::WHITE);
         }
-        ledStrip.update();
       }
 
       uint16_t menorDistancia = 9999;
@@ -59,15 +60,20 @@ void ToFCalibration::run(VL53Mux12_FRAN& tof, uint8_t buttonPin, LedStrip& ledSt
         tof.readSensor((ToFId)idxSensor);
         uint16_t raw = tof.getRaw((ToFId)idxSensor);
         
-        if (raw < menorDistancia && raw > 0) { 
+        if (raw < menorDistancia && raw > 15 && raw < 2000) { 
           menorDistancia = raw;
         }
       }
 
-      if (menorDistancia < 100) {
+      if (menorDistancia < 60) {
+        leiturasConfirmadas++;
+      } else {
+        leiturasConfirmadas = 0;
+      }
+
+      if (leiturasConfirmadas >= 3) {
         ledStrip.clear();
         ledStrip.setpixel(LedSide::ALL, lado.ledIndex, LedColor::WHITE);
-        ledStrip.update();
 
         uint32_t somaLeituras[4] = {0};
 
@@ -89,9 +95,7 @@ void ToFCalibration::run(VL53Mux12_FRAN& tof, uint8_t buttonPin, LedStrip& ledSt
         }
 
         EEPROM.put(0, blob); 
-        
         ledStrip.clear();
-        ledStrip.update();
         sideCalibrated = true; 
       }
       
@@ -101,15 +105,11 @@ void ToFCalibration::run(VL53Mux12_FRAN& tof, uint8_t buttonPin, LedStrip& ledSt
 
   for (uint8_t b = 0; b < 4; b++) {
     ledStrip.setColor(LedSide::ALL, LedColor::GREEN);
-    ledStrip.update();
     delay(300);
     ledStrip.clear();
-    ledStrip.update();
     delay(300);
   }
-  
 }
-
 
 void ToFCalibration::load(VL53Mux12_FRAN & tof){
   Blob blob;
@@ -117,6 +117,6 @@ void ToFCalibration::load(VL53Mux12_FRAN & tof){
   if (blob.magic != MAGIC)
     return;
   for (uint8_t i = 0; i < (uint8_t)ToFId::COUNT; i++){
-  tof.setOffset((ToFId)i, blob.offset[i]);
+    tof.setOffset((ToFId)i, blob.offset[i]);
   }  
 }

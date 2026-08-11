@@ -140,6 +140,7 @@ private:
   Pose2D _pose;
   MissionState _state = MissionState::NAVIGATING;
   MotionPhase _phase = MotionPhase::DECIDE;
+  uint32_t _turn90StartMs = 0;
 
   Heading _targetHeading = Heading::NORTH;
   int32_t _startFlTicks = 0;
@@ -156,13 +157,13 @@ private:
   int16_t _startY = 0;
   bool _returnHomeActive = false;
 
-  static constexpr float YAW_KP = 2.6f;
-  static constexpr float CENTER_KP = 0.10f;
-  static constexpr float MAX_TURN = 260.0f;
+  static constexpr float YAW_KP = 7.0f;
+  static constexpr float CENTER_KP = 0.5f;
+  static constexpr float MAX_TURN = 1800.0f;
   static constexpr float TURN_TOL_DEG = 3.0f;
 
-  static constexpr int16_t LINEAR_TRAVEL_PWM = 420;
-  static constexpr int16_t LINEAR_ALIGN_PWM = 180;
+  static constexpr int16_t LINEAR_TRAVEL_PWM = 2200;
+  static constexpr int16_t LINEAR_ALIGN_PWM = 1400;
 
   static constexpr uint16_t DFS_STACK_MAX = 512;
   static constexpr uint16_t BFS_PATH_MAX = 256;

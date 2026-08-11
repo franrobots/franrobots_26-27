@@ -1,8 +1,11 @@
 #include <Arduino.h>
 #include "VL53Mux12_FRAN.h"
 #include "ToFCalibration.h"
+#include "LedStrip.h"
+#include "config.h"
 
 VL53Mux12_FRAN tof(0x70, 0x71);
+LedStrip ledStrip(LED_MIDDLE, 7); // Assuming 12 LEDs on the strip
 
 void setup() {
   Serial.begin(115200);
@@ -13,7 +16,7 @@ void setup() {
   }
 
   if (digitalRead(23) == LOW) {
-    ToFCalibration::run(tof, 23);
+    ToFCalibration::run(tof, ledStrip);
   }
   ToFCalibration::load(tof);
 }
