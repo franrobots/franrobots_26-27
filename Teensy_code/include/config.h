@@ -140,6 +140,65 @@ constexpr uint16_t SWITCH_TURN_MS = 180;
 
 
 // ======================================================
+// 🎛️ CONTROLE EM MALHA FECHADA (PID)
+// ======================================================
+
+// --- Convencoes de sinal (AJUSTAR NO PRIMEIRO TESTE) ---
+// TURN_SIGN: +1 se move_tank(0, +turn) gira para a DIREITA, ou seja,
+// no sentido em que o yaw do BNO055 AUMENTA. Se o robo girar para o lado
+// errado / entrar em fuga, troque para -1. Este e o unico ponto de ajuste.
+constexpr int8_t TURN_SIGN = +1;
+
+// ENC_BALANCE_SIGN: +1 se, quando a roda esquerda anda MAIS que a direita,
+// a correcao precisa ser para a esquerda. Se o robo "abrir" em vez de
+// corrigir durante a reta, troque para -1.
+constexpr int8_t ENC_BALANCE_SIGN = -1;
+
+// --- PID de guinada (yaw) - realimentado pelo BNO055 ---
+// Entrada: erro em GRAUS. Saida: contagem de PWM de giro.
+constexpr float YAW_KP     = 26.0f;
+constexpr float YAW_KI     = 0.8f;
+constexpr float YAW_KD     = 3.0f;
+constexpr float YAW_I_MAX  = 250.0f;   // anti-windup do termo integral
+constexpr float YAW_OUT_MAX = 1800.0f; // saturacao do comando de giro
+constexpr float YAW_TOL_DEG = 2.5f;    // erro aceito para considerar alinhado
+
+// --- PID de equilibrio das rodas - realimentado pelos encoders ---
+// Entrada: diferenca de ticks entre roda esquerda e direita no ladrilho.
+// Termo de TRIM: corrige derivas que o yaw ainda nao acusou. Manter ganho
+// baixo, o BNO e a referencia principal de rumo. Zerar ENC_KP desliga.
+constexpr float ENC_KP     = 1.4f;
+constexpr float ENC_KI     = 0.04f;
+constexpr float ENC_KD     = 0.25f;
+constexpr float ENC_I_MAX  = 150.0f;
+constexpr float ENC_OUT_MAX = 500.0f;
+
+// --- Centragem lateral entre paredes - realimentada pelos ToF ---
+// Entrada: (distancia esquerda - distancia direita) em mm.
+constexpr float CENTER_KP     = 2.2f;
+constexpr float CENTER_OUT_MAX = 450.0f;
+// So centraliza com parede dos DOIS lados dentro deste alcance.
+constexpr uint16_t CENTER_VALID_MM = 300;
+
+// --- Velocidades base ---
+constexpr int16_t DRIVE_PWM = 2200;   // avanco durante DRIVE_TILE
+constexpr int16_t ALIGN_PWM = 1200;   // avanco lento durante PRE_ALIGN
+
+// --- Periodo do laco de controle ---
+// dt fixo mantem o PID previsivel (derivativo/integral estaveis).
+constexpr uint16_t CONTROL_PERIOD_MS = 20;   // 50 Hz
+constexpr uint16_t IMU_PERIOD_MS     = 10;   // leitura do BNO055
+
+// --- Watchdogs de fase (rede de seguranca) ---
+// Com IMU e encoders reais a saida normal e por erro/ticks. Estes limites
+// so evitam travamento se um sensor morrer no meio da fase.
+constexpr uint16_t PHASE_PREALIGN_MAX_MS = 1500;
+constexpr uint16_t PHASE_TURN_MAX_MS     = 2500;
+constexpr uint32_t PHASE_DRIVE_MAX_MS    = 4000;
+constexpr uint16_t FRONT_STOP_MM         = 90;  // parede frontal: aborta o ladrilho
+
+
+// ======================================================
 // 🧠 FLAGS DO SISTEMA
 // ======================================================
 

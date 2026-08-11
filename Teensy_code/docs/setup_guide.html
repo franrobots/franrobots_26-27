@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Teensy 4.0 - FranRobots</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; text-align: center; }
+        header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        header p { font-size: 1.1em; opacity: 0.9; }
+        main { padding: 40px; }
+        .section { margin-bottom: 40px; }
+        .section-title { font-size: 1.8em; color: #667eea; border-bottom: 3px solid #667eea; padding-bottom: 10px; margin-bottom: 20px; }
+        .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .step-card {
+            background: #f8f9fa;
+            border-left: 5px solid #667eea;
+            padding: 20px;
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+        .step-card:hover { transform: translateY(-5px); box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2); }
+        .step-number { display: inline-block; background: #667eea; color: white; width: 40px; height: 40px; border-radius: 50%; text-align: center; line-height: 40px; font-weight: bold; margin-bottom: 10px; }
+        .step-title { font-size: 1.2em; font-weight: bold; color: #333; margin-bottom: 10px; }
+        .step-content { font-size: 0.95em; color: #666; }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin: 15px 0;
+        }
+        .command { color: #6a9fb5; }
+        .alert {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            border-left: 4px solid;
+        }
+        .alert-success { background: #d4edda; border-color: #28a745; color: #155724; }
+        .alert-warning { background: #fff3cd; border-color: #ffc107; color: #856404; }
+        .alert-danger { background: #f8d7da; border-color: #dc3545; color: #721c24; }
+        .checklist { list-style: none; }
+        .checklist li { padding: 8px 0; border-bottom: 1px solid #eee; }
+        .checklist li:before { content: "☐ "; margin-right: 10px; }
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+        }
+        .timeline-item {
+            margin-left: 40px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        .timeline-item:before {
+            content: "";
+            position: absolute;
+            left: -35px;
+            top: 5px;
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 0 3px #667eea;
+        }
+        .timeline-item:not(:last-child):after {
+            content: "";
+            position: absolute;
+            left: -25px;
+            top: 25px;
+            height: 30px;
+            width: 2px;
+            background: #667eea;
+        }
+        .timeline-title { font-weight: bold; font-size: 1.1em; color: #667eea; }
+        .timeline-content { color: #666; margin-top: 8px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+        .tech-stack {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .tech-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+        }
+        footer { background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #ddd; color: #666; }
+        .success-banner {
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Setup Teensy 4.0</h1>
+            <p>FranRobots - Maze Navigation Challenge</p>
+        </header>
+
+        <main>
+            <!-- SUCCESS BANNER -->
+            <div class="success-banner">
+                <h2>✅ Código Pronto para Compilar!</h2>
+                <p>Todas as dependências estão configuradas. Siga os passos abaixo para rodar na Teensy.</p>
+            </div>
+
+            <!-- QUICK START -->
+            <div class="section">
+                <h2 class="section-title">⚡ Quick Start (5 minutos)</h2>
+
+                <div class="alert alert-success">
+                    <strong>🚀 Opção 1 - Automático (Recomendado)</strong>
+                    <div class="code-block">
+cd c:\Users\Instrutor\Desktop\franrobots_26-27\Teensy_code
+<span class="command">.\setup_and_build.ps1</span>
+# Ou: setup_and_build.bat
+                    </div>
+                    <p>Isso fará tudo automaticamente: baixar dependências, compilar e preparar para upload.</p>
+                </div>
+
+                <div class="alert alert-warning">
+                    <strong>📝 Opção 2 - Manual</strong>
+                    <div class="code-block">
+pio run -e teensy40        <span style="color: #6a9fb5;"># Download + Compilar</span>
+pio run -e teensy40 --target=upload  <span style="color: #6a9fb5;"># Upload para Teensy</span>
+pio device monitor -b 115200  <span style="color: #6a9fb5;"># Monitor Serial</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TIMELINE -->
+            <div class="section">
+                <h2 class="section-title">📋 Processo Passo-a-Passo</h2>
+
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-title">1️⃣ Verificar Pré-requisitos</div>
+                        <div class="timeline-content">
+                            <ul class="checklist">
+                                <li><strong>Python 3.x</strong> instalado (verificar: <code>python --version</code>)</li>
+                                <li><strong>PlatformIO</strong> instalado (verificar: <code>pio --version</code>)</li>
+                                <li><strong>Teensy Loader</strong> instalado</li>
+                                <li><strong>Teensy 4.0</strong> conectada via USB</li>
+                            </ul>
+                            <div class="alert alert-warning" style="margin-top: 10px;">
+                                Se faltar algo, execute: <code>pip install platformio</code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-title">2️⃣ Baixar Dependências</div>
+                        <div class="timeline-content">
+                            O sistema baixará automaticamente:
+                            <ul>
+                                <li>✓ Framework Arduino (Teensy Core)</li>
+                                <li>✓ Pololu VL53L0X (sensores ToF)</li>
+                                <li>✓ Adafruit BNO055 (IMU)</li>
+                                <li>✓ Adafruit NeoPixel (LEDs)</li>
+                                <li>✓ Adafruit BusIO e dependências</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-title">3️⃣ Compilar Código</div>
+                        <div class="timeline-content">
+                            <div class="code-block">
+pio run -e teensy40
+                            </div>
+                            Você verá: <code>======================== [SUCCESS] Took X.XX seconds ========================</code>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-title">4️⃣ Fazer Upload</div>
+                        <div class="timeline-content">
+                            <div class="code-block">
+pio run -e teensy40 --target=upload
+                            </div>
+                            <p><strong>Se pedir:</strong> Pressione o botão PROGRAM na Teensy</p>
+                            <p><strong>Resultado esperado:</strong> "Programming complete"</p>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-title">5️⃣ Monitorar Serial</div>
+                        <div class="timeline-content">
+                            <div class="code-block">
+pio device monitor -b 115200
+                            </div>
+                            <p>Você deve ver:</p>
+                            <ul>
+                                <li>✓ "Sistema iniciando..."</li>
+                                <li>✓ "Sistema pronto."</li>
+                                <li>✓ "Deus abençoe o round."</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DEPENDÊNCIAS -->
+            <div class="section">
+                <h2 class="section-title">📦 Dependências Detalhadas</h2>
+
+                <h3 style="margin-top: 20px; color: #667eea;">Externas (Automaticamente Baixadas)</h3>
+                <div class="tech-stack">
+                    <div class="tech-item">
+                        <div>🔴 VL53L0X</div>
+                        <small>Sensores ToF</small>
+                    </div>
+                    <div class="tech-item">
+                        <div>🟢 BNO055</div>
+                        <small>IMU/Ângulo</small>
+                    </div>
+                    <div class="tech-item">
+                        <div>🔵 NeoPixel</div>
+                        <small>LEDs RGB</small>
+                    </div>
+                    <div class="tech-item">
+                        <div>⚪ Unified Sensor</div>
+                        <small>API Padrão</small>
+                    </div>
+                    <div class="tech-item">
+                        <div>⚙️ BusIO</div>
+                        <small>I2C/SPI</small>
+                    </div>
+                    <div class="tech-item">
+                        <div>🎯 Arduino Core</div>
+                        <small>Framework</small>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 30px; color: #667eea;">Personalizadas (em /lib)</h3>
+                <div class="grid-2">
+                    <div>
+                        <strong>Sensores</strong>
+                        <ul class="checklist">
+                            <li>VL53Mux12_FRAN (ToF)</li>
+                            <li>BNO055_FranRobots (IMU)</li>
+                            <li>ReflectancePlate (Cores)</li>
+                            <li>Encoder (Codificador)</li>
+                            <li>TCA9548A (Multiplexador)</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <strong>Controle</strong>
+                        <ul class="checklist">
+                            <li>Robot (Agrupa motores)</li>
+                            <li>Motor (Driver PWM)</li>
+                            <li>ServoKit (Servo)</li>
+                            <li>RobotControl (Navegação)</li>
+                            <li>SwitchAvoidance (Bumpers)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TROUBLESHOOTING -->
+            <div class="section">
+                <h2 class="section-title">🔧 Solução de Problemas</h2>
+
+                <div class="steps">
+                    <div class="step-card">
+                        <div class="step-number">❌</div>
+                        <div class="step-title">PlatformIO não encontrado</div>
+                        <div class="step-content">
+                            <div class="code-block">pip install platformio</div>
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">❌</div>
+                        <div class="step-title">Teensy não encontrada</div>
+                        <div class="step-content">
+                            • Reconecte a Teensy<br>
+                            • Instale driver Teensy<br>
+                            • Use outro cabo USB
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">❌</div>
+                        <div class="step-title">Erro de compilação</div>
+                        <div class="step-content">
+                            <div class="code-block">pio run -e teensy40 --target=clean
+pio run -e teensy40</div>
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">❌</div>
+                        <div class="step-title">Serial Monitor vazio</div>
+                        <div class="step-content">
+                            • Aguarde 5 segundos<br>
+                            • Verifique baud rate (115200)<br>
+                            • Pressione reset na Teensy
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">❌</div>
+                        <div class="step-title">Upload falha</div>
+                        <div class="step-content">
+                            • Pressione botão PROGRAM<br>
+                            • Use Teensy Loader manual<br>
+                            • Reinicie PlatformIO
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">❌</div>
+                        <div class="step-title">Dependências faltando</div>
+                        <div class="step-content">
+                            <div class="code-block">pio lib update
+pio run -e teensy40</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VERIFICAÇÃO -->
+            <div class="section">
+                <h2 class="section-title">✅ Checklist Final</h2>
+
+                <ul class="checklist" style="font-size: 1.1em;">
+                    <li>Python 3.x instalado</li>
+                    <li>PlatformIO CLI instalado</li>
+                    <li>Teensy 4.0 conectada</li>
+                    <li>Compilação sem erros</li>
+                    <li>Upload bem-sucedido</li>
+                    <li>Serial Monitor conectado (115200 baud)</li>
+                    <li>Mensagens aparecem no console</li>
+                    <li>Sensores respondem</li>
+                    <li>Motores giram (teste com levantado)</li>
+                    <li>Calibração concluída</li>
+                </ul>
+            </div>
+
+            <!-- PRÓXIMOS PASSOS -->
+            <div class="section">
+                <h2 class="section-title">🎯 Próximos Passos</h2>
+
+                <div class="grid-2">
+                    <div class="step-card">
+                        <div class="step-number">1</div>
+                        <div class="step-title">Testar Sensores</div>
+                        <div class="step-content">
+                            • Monitor Serial mostra valores?<br>
+                            • Sensores ToF detectam distância?<br>
+                            • Acelerômetro/IMU funciona?
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">2</div>
+                        <div class="step-title">Testar Motores</div>
+                        <div class="step-content">
+                            • Levante o robô<br>
+                            • Envie comando de movimento<br>
+                            • Verifique rotação das rodas
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">3</div>
+                        <div class="step-title">Calibração</div>
+                        <div class="step-content">
+                            • Pressione botão durante startup (8s)<br>
+                            • Calibre sensores ToF<br>
+                            • Calibre cores do piso
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">4</div>
+                        <div class="step-title">Ajustes</div>
+                        <div class="step-content">
+                            • Configure encoder ticks<br>
+                            • Ajuste ganhos dos PIDs<br>
+                            • Ative câmeras OpenMV
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LINKS ÚTEIS -->
+            <div class="section">
+                <h2 class="section-title">📚 Documentação Completa</h2>
+
+                <div class="alert alert-success">
+                    <strong>Documentos Gerados:</strong><br>
+                    📄 <code>SETUP_TEENSY.md</code> - Guia completo (30 páginas)<br>
+                    📄 <code>DEPENDENCIAS.md</code> - Mapa de dependências<br>
+                    📄 <code>QUICKSTART.md</code> - Inicio rápido<br>
+                    📄 <code>analise_completa.html</code> - Análise do código<br>
+                    🔧 <code>config.h</code> - Configuração de pinos<br>
+                </div>
+            </div>
+
+        </main>
+
+        <footer>
+            <p>FranRobots - Maze Navigation Challenge | Teensy 4.0 (i.MX RT1062)</p>
+            <p style="margin-top: 10px; color: #999;">Documentação atualizada: 11/08/2026</p>
+        </footer>
+    </div>
+</body>
+</html>

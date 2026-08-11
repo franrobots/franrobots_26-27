@@ -11,7 +11,11 @@ constexpr uint32_t kTimingBudgetUs = 20000;
 //   "RF", "RC", "RB"
 // };
 }
-constexpr uint16_t kSensorCount = 11;
+// Derivado do enum, nao hardcoded: se ToFId ganhar/perder um sensor,
+// a tabela abaixo quebra na compilacao em vez de silenciosamente
+// desalinhar os indices.
+constexpr uint8_t kSensorCount = (uint8_t)ToFId::COUNT;
+
 struct SensorMap {
   uint8_t mux;
   uint8_t channel;
@@ -21,19 +25,25 @@ struct SensorMap {
 #define TCA1_ADDR 0x70
 #define TCA2_ADDR 0x71
 
+// ATENCAO: a ordem desta tabela DEVE casar com enum class ToFId (VL53Mux12_FRAN.h).
+// readSensorByIndex(i) le o canal de kSensorNames[i] e grava em _mm[i], entao
+// o indice i tem que ser igual a (uint8_t)ToFId. Nao reordene um sem o outro.
 SensorMap kSensorNames[kSensorCount] = {
-  {TCA1_ADDR, 0, "BR"}, // S1
-  {TCA1_ADDR, 1, "RB"}, // S2
-  {TCA1_ADDR, 2, "RC"}, // S3
-  {TCA1_ADDR, 3, "RF"}, // S4
-  {TCA1_ADDR, 4, "FR"}, // S5
-  {TCA1_ADDR, 5, "FC"}, // S6
-  {TCA1_ADDR, 7, "FL"}, // S7
-  {TCA2_ADDR, 0, "LF"}, // S8
-  {TCA2_ADDR, 2, "LC"}, // S9
-  {TCA2_ADDR, 4, "LB"}, // S10
-  {TCA2_ADDR, 1, "BL"}  // S11
+  {TCA1_ADDR, 7, "FL"}, // idx 0  -> ToFId::FL   (era S7)
+  {TCA1_ADDR, 5, "FC"}, // idx 1  -> ToFId::FC   (era S6)
+  {TCA1_ADDR, 4, "FR"}, // idx 2  -> ToFId::FR   (era S5)
+  {TCA2_ADDR, 0, "LF"}, // idx 3  -> ToFId::LF   (era S8)
+  {TCA2_ADDR, 2, "LC"}, // idx 4  -> ToFId::LC   (era S9)
+  {TCA2_ADDR, 4, "LB"}, // idx 5  -> ToFId::LB   (era S10)
+  {TCA2_ADDR, 1, "BL"}, // idx 6  -> ToFId::BL   (era S11)
+  {TCA1_ADDR, 0, "BR"}, // idx 7  -> ToFId::BR   (era S1)
+  {TCA1_ADDR, 3, "RF"}, // idx 8  -> ToFId::RF   (era S4)
+  {TCA1_ADDR, 2, "RC"}, // idx 9  -> ToFId::RC   (era S3)
+  {TCA1_ADDR, 1, "RB"}  // idx 10 -> ToFId::RB   (era S2)
 };
+
+static_assert(sizeof(kSensorNames) / sizeof(kSensorNames[0]) == (size_t)ToFId::COUNT,
+              "kSensorNames precisa ter uma entrada por ToFId, na mesma ordem do enum");
 
 VL53Mux12_FRAN::VL53Mux12_FRAN(uint8_t addrA, uint8_t addrB)
 : _addrA(addrA), _addrB(addrB) {}

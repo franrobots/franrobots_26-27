@@ -23,6 +23,7 @@ void RobotControl::begin(int16_t startX, int16_t startY, Heading startHeading) {
   _pose = {startX, startY, startHeading};
   _targetHeading = startHeading;
   _phase = MotionPhase::DECIDE;
+  _phaseStartMs = millis();
   _state = MissionState::NAVIGATING;
   _blueReleaseAtMs = 0;
   _dfsSize = 0;
@@ -45,6 +46,7 @@ bool RobotControl::relocateToLastCheckpoint() {
   _pose.x = _lastCheckpointX;
   _pose.y = _lastCheckpointY;
   _phase = MotionPhase::DECIDE;
+  _phaseStartMs = millis();
   _state = MissionState::NAVIGATING;
   _bfsLen = 0;
   _bfsIdx = 0;
@@ -155,6 +157,7 @@ PlannerOutput RobotControl::update(const PlannerInput& in) {
     _targetHeading = nextHeading;
     reserveMoveDelta(_targetHeading);
     _phase = MotionPhase::PRE_ALIGN;
+    _phaseStartMs = in.nowMs;
   }
 
   if (_phase == MotionPhase::PRE_ALIGN) {
@@ -167,24 +170,52 @@ PlannerOutput RobotControl::update(const PlannerInput& in) {
     out.turnPwm = clampPwm(turnCmd + centerCmd);
     out.phase = _phase;
 
-    if (fabsf(yawErr) <= TURN_TOL_DEG) {
+    // Saida por alinhamento (quando ha IMU real) OU por tempo.
+    // Sem o timeout, yawDeg derivado da propria pose nunca converge e a
+    // fase trava para sempre: o erro so zera se a fase avancar, e a fase
+    // so avanca se o erro zerar.
+    const bool aligned = (fabsf(yawErr) <= TURN_TOL_DEG);
+    const bool timedOut = (in.nowMs - _phaseStartMs) >= _preAlignMs;
+    if (aligned || timedOut) {
       _phase = MotionPhase::TURN_90;
+      _phaseStartMs = in.nowMs;
     }
     return out;
   }
 
   if (_phase == MotionPhase::TURN_90) {
-    const float yawErr = shortestYawError(headingToYaw(_targetHeading), in.yawDeg);
     out.command = MotionCommand::DRIVE_CLOSED_LOOP;
     out.linearPwm = 0;
-    out.turnPwm = clampPwm(yawErr * (YAW_KP * 1.2f));
     out.phase = _phase;
 
-    if (fabsf(yawErr) <= TURN_TOL_DEG) {
+    // Ja apontando para o alvo: nao ha nada a girar.
+    if (_targetHeading == _pose.heading) {
+      out.turnPwm = 0;
+      _startFlTicks = in.encFlTicks;
+      _startRrTicks = in.encRrTicks;
+      _phase = MotionPhase::DRIVE_TILE;
+      _phaseStartMs = in.nowMs;
+      return out;
+    }
+
+    // Sentido do giro vem da comparacao discreta de heading, nao do yaw:
+    // sem IMU o yaw e sintetico e nao muda durante a fase.
+    const bool wantLeft = (_targetHeading == turnLeft(_pose.heading));
+    const bool wantBack = (_targetHeading == turnBack(_pose.heading));
+    const uint32_t turnMs = wantBack ? ((uint32_t)_turn90Ms * 2u) : (uint32_t)_turn90Ms;
+
+    out.turnPwm = (wantLeft || wantBack) ? TURN_PWM : (int16_t)(-TURN_PWM);
+
+    const float yawErr = shortestYawError(headingToYaw(_targetHeading), in.yawDeg);
+    const bool aligned = (fabsf(yawErr) <= TURN_TOL_DEG);
+    const bool timedOut = (in.nowMs - _phaseStartMs) >= turnMs;
+
+    if (aligned || timedOut) {
       _pose.heading = _targetHeading;
       _startFlTicks = in.encFlTicks;
       _startRrTicks = in.encRrTicks;
       _phase = MotionPhase::DRIVE_TILE;
+      _phaseStartMs = in.nowMs;
     }
     return out;
   }
@@ -199,7 +230,13 @@ PlannerOutput RobotControl::update(const PlannerInput& in) {
     out.turnPwm = clampPwm(turnCmd + centerCmd);
     out.phase = _phase;
 
-    if (traveledTicks(in) >= _ticksPerTile) {
+    // Tres saidas possiveis. Sem encoder real traveledTicks() retorna sempre 0,
+    // entao byTicks nunca dispara e a fase rodaria para sempre.
+    const bool byTicks = (traveledTicks(in) >= _ticksPerTile);
+    const bool byTime  = ((in.nowMs - _phaseStartMs) >= _tileDriveMs);
+    const bool byWall  = (in.tofFrontMm > 0 && in.tofFrontMm <= _frontStopMm);
+
+    if (byTicks || byTime || byWall) {
       _pose.x += _tileDx;
       _pose.y += _tileDy;
       Cell* c = _map.at(_pose.x, _pose.y);
@@ -209,6 +246,7 @@ PlannerOutput RobotControl::update(const PlannerInput& in) {
         _returnHomeActive = false;
       }
       _phase = MotionPhase::DECIDE;
+      _phaseStartMs = in.nowMs;
       out.command = MotionCommand::HOLD;
       out.linearPwm = 0;
       out.turnPwm = 0;
@@ -301,8 +339,9 @@ bool RobotControl::isBlockedOrForbidden(int16_t x, int16_t y) const {
 }
 
 bool RobotControl::chooseDfsNeighbor(const PlannerInput& in, Heading& outHeading) {
-  // DFS preference: left -> front -> right -> back.
-  const uint8_t order[4] = {1, 0, 2, 3};
+  // DFS preference: front -> left -> right -> back.
+  // rel: 0 = frente, 1 = esquerda, 2 = direita, 3 = tras.
+  const uint8_t order[4] = {0, 1, 2, 3};
   for (uint8_t k = 0; k < 4; k++) {
     const uint8_t rel = order[k];
     if (!relativeFree(in, rel)) continue;

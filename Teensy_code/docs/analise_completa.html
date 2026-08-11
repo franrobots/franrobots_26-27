@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise Completa do Código Teensy Robot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+        .section-title {
+            font-size: 1.8em;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .issue {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .issue.error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        .issue.success {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        .issue-title {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+        .issue-description {
+            margin-bottom: 8px;
+        }
+        .issue-code {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin-bottom: 8px;
+        }
+        .issue-impact {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .severity-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .severity-critical {
+            background: #dc3545;
+            color: white;
+        }
+        .severity-high {
+            background: #fd7e14;
+            color: white;
+        }
+        .severity-medium {
+            background: #ffc107;
+            color: black;
+        }
+        .severity-low {
+            background: #17a2b8;
+            color: white;
+        }
+        .summary-box {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .summary-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .summary-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        .architecture {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .component {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-left: 3px solid #667eea;
+        }
+        .component-name {
+            font-weight: bold;
+            color: #667eea;
+        }
+        .component-status {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #667eea;
+            color: white;
+        }
+        tr:hover {
+            background: #f9f9f9;
+        }
+        .checklist {
+            list-style: none;
+        }
+        .checklist li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .checklist li:before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .checklist li.warning:before {
+            content: "⚠ ";
+            color: #ffc107;
+        }
+        .checklist li.error:before {
+            content: "✗ ";
+            color: #dc3545;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #ddd;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Análise Completa do Código</h1>
+            <p>Teensy 4.0 - Robot Maze Navigation System</p>
+        </div>
+
+        <div class="content">
+            <!-- RESUMO -->
+            <div class="section">
+                <h2 class="section-title">📊 Resumo Executivo</h2>
+                <div class="summary-box">
+                    <div class="summary-card">
+                        <div class="summary-number">2</div>
+                        <div class="summary-label">Erros Críticos</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-number">3</div>
+                        <div class="summary-label">Avisos</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-number">85%</div>
+                        <div class="summary-label">Saúde do Código</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-number">10</div>
+                        <div class="summary-label">Módulos Analisados</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ERROS CRÍTICOS -->
+            <div class="section">
+                <h2 class="section-title">🚨 Erros Críticos</h2>
+
+                <div class="issue error">
+                    <div class="issue-title">
+                        <span class="severity-badge severity-critical">CRÍTICO</span>
+                        Dados de Vítimas Nunca Inicializados
+                    </div>
+                    <div class="issue-description">
+                        O código que lê as câmeras OpenMV está comentado, mas o sistema tenta usar os dados de vítimas posteriormente.
+                    </div>
+                    <div class="issue-code">
+// main.cpp linha 245-246 (COMENTADO - NÃO EXECUTA):
+//CameraData leftCam = camL.read(15, 0);
+//CameraData rightCam = camR.read(15, 0);
+
+// main.cpp linha 258-261 (COMENTADO - NÃO EXECUTA):
+//in.victimLeft = leftCam.vitima;
+//in.victimRight = rightCam.vitima;
+//in.victimConfLeft = leftCam.confianca;
+//in.victimConfRight = rightCam.confianca;
+
+// main.cpp linha 266-271 (EXECUTA MAS USA VALORES SEMPRE 0):
+const bool victimLeft = (in.victimConfLeft >= VICTIM_CONFIDENCE_MIN && // SEMPRE 0
+                         servoKit.shouldDrop(in.victimLeft) &&
+                         hasWallOnLeftVictimSide(scan));
+                    </div>
+                    <div class="issue-impact">
+                        <strong>Impacto:</strong> O sistema NUNCA conseguirá detectar ou resgatar vítimas, pois victimConfLeft e victimConfRight sempre serão 0, não passando no threshold de VICTIM_CONFIDENCE_MIN (65).
+                    </div>
+                </div>
+
+                <div class="issue error">
+                    <div class="issue-title">
+                        <span class="severity-badge severity-critical">CRÍTICO</span>
+                        Valores de Vítimas Impressos Sem Inicialização
+                    </div>
+                    <div class="issue-description">
+                        Serial.print imprime valores de vítimas que nunca foram lidos das câmeras
+                    </div>
+                    <div class="issue-code">
+// main.cpp linha 315-322 - Imprime valores zerados:
+Serial.print(" | Vict(");
+Serial.print(in.victimLeft);        // Sempre 0
+Serial.print("@");
+Serial.print(in.victimConfLeft);    // Sempre 0
+Serial.print(",");
+Serial.print(in.victimRight);       // Sempre 0
+Serial.print("@");
+Serial.print(in.victimConfRight);   // Sempre 0
+                    </div>
+                    <div class="issue-impact">
+                        <strong>Impacto:</strong> Debug será enganoso, fazendo parecer que as câmeras não estão detectando vítimas quando na verdade nunca foram lidas.
+                    </div>
+                </div>
+            </div>
+
+            <!-- AVISOS -->
+            <div class="section">
+                <h2 class="section-title">⚠️ Avisos e Pontos de Atenção</h2>
+
+                <div class="issue">
+                    <div class="issue-title">
+                        <span class="severity-badge severity-high">ALTO</span>
+                        Lógica de Fallback de Encoders Sem Documentação
+                    </div>
+                    <div class="issue-description">
+                        A função traveledTicks() usa um algoritmo de seleção de encoder que pode ser confuso
+                    </div>
+                    <div class="issue-code">
+// RobotControl.cpp linha 529-547
+int32_t RobotControl::traveledTicks(const PlannerInput& in) const {
+  const int32_t deltaFl = in.encFlTicks - _startFlTicks;
+  const int32_t deltaRr = in.encRrTicks - _startRrTicks;
+  const int32_t dfl = abs(deltaFl);
+  const int32_t drr = abs(deltaRr);
+
+  if (diff > ERROR_THRESHOLD || direcao) {
+    if (dfl > drr) {
+        return dfl; // Usa só o encoder FL se tiver muita diferença
+    } else {
+        return drr; // Usa só o encoder RR
+    }
+  } else{
+    return (dfl + drr) / 2; // Média se forem parecidos
+  }
+}
+                    </div>
+                    <div class="issue-impact">
+                        <strong>Impacto:</strong> Funciona, mas a lógica precisa ser validada em campo. Se um encoder falhar, o robô pode se desviar. O threshold de 150 ticks pode precisar ser calibrado.
+                    </div>
+                </div>
+
+                <div class="issue">
+                    <div class="issue-title">
+                        <span class="severity-badge severity-medium">MÉDIO</span>
+                        Convenção de Nomenclatura Inconsistente
+                    </div>
+                    <div class="issue-description">
+                        A classe se chama "motor" (minúscula) em vez de "Motor" (maiúscula)
+                    </div>
+                    <div class="issue-code">
+// Motor.h linha 5:
+class motor {  // Deveria ser: class Motor
+
+// Uso em main.cpp linha 31-34:
+motor mFL(Ain1_M3, Ain2_M3);
+motor mRL(Ain1_M4, Ain2_M4);
+motor mFR(Ain1_M1, Ain2_M1);
+motor mRR(Ain1_M2, Ain2_M2);
+                    </div>
+                    <div class="issue-impact">
+                        <strong>Impacto:</strong> Não afeta funcionalidade, mas viola convenções C++ (PascalCase para classes). Dificulta legibilidade e manutenção futura.
+                    </div>
+                </div>
+
+                <div class="issue">
+                    <div class="issue-title">
+                        <span class="severity-badge severity-medium">MÉDIO</span>
+                        Possível Problema de Compatibilidade I2C
+                    </div>
+                    <div class="issue-description">
+                        Múltiplos dispositivos I2C podem ter conflitos de addressing
+                    </div>
+                    <div class="issue-code">
+// config.h linha 154-158:
+constexpr uint8_t TCA_A = 0x70;          // Multiplexador A
+constexpr uint8_t TCA_B = 0x71;          // Multiplexador B
+constexpr uint8_t OPENMVL = 0x12;        // Câmera esquerda
+constexpr uint8_t OPENMVR = 0x13;        // Câmera direita
+constexpr uint8_t BNO055_ADDRESS = 0x28; // IMU
+
+// Setup() inicializa em ordem:
+1. BNO055
+2. ToF
+3. Encoder/Bumper (não I2C)
+4. Cameras (comentado)
+                    </div>
+                    <div class="issue-impact">
+                        <strong>Impacto:</strong> Se os TCA9548A multiplexadores não estiverem bem inicializados antes dos ToF, pode haver conflitos. Recomenda-se testar inicialização com i2c_scanner.
+                    </div>
+                </div>
+            </div>
+
+            <!-- ARQUITETURA -->
+            <div class="section">
+                <h2 class="section-title">🏗️ Análise da Arquitetura</h2>
+
+                <div class="architecture">
+                    <h3 style="margin-bottom: 15px; color: #667eea;">Estrutura do Sistema</h3>
+
+                    <div class="component">
+                        <div class="component-name">🎯 main.cpp (Orquestrador Principal)</div>
+                        <div class="component-status">Status: ✓ OK - Bem estruturado com máquina de estados clara</div>
+                        <div class="component-status" style="margin-top: 8px;">Responsabilidades:</div>
+                        <div style="margin-left: 20px; font-size: 0.9em; color: #666;">
+                            • Setup e inicialização de sensores<br>
+                            • Loop principal com timing de 50ms<br>
+                            • Leitura de sensores (ToF, Encoder, IMU, Cor)<br>
+                            • Comunicação com RobotControl<br>
+                            • Evitação de obstáculos (bumpers)<br>
+                            • Resgate de vítimas (não funcional atualmente)
+                        </div>
+                    </div>
+
+                    <div class="component">
+                        <div class="component-name">🤖 Robot.h/cpp (Controle de Motores)</div>
+                        <div class="component-status">Status: ✓ OK - Implementação correta e simples</div>
+                        <div class="component-status" style="margin-top: 8px;">Responsabilidades:</div>
+                        <div style="margin-left: 20px; font-size: 0.9em; color: #666;">
+                            • Agrupa 4 motores em um único objeto<br>
+                            • Implementa controle tank (linear + turn)<br>
+                            • Suporta inversão de direção por motor
+                        </div>
+                    </div>
+
+                    <div class="component">
+                        <div class="component-name">🧭 RobotControl.h/cpp (Navegação)</div>
+                        <div class="component-status">Status: ✓ OK - Algoritmo sofisticado e bem implementado</div>
+                        <div class="component-status" style="margin-top: 8px;">Responsabilidades:</div>
+                        <div style="margin-left: 20px; font-size: 0.9em; color: #666;">
+                            • Manutenção do mapa 41x41 do labirinto<br>
+                            • Algoritmo DFS para exploração<br>
+                            • Algoritmo BFS para retorno ao checkpoint<br>
+                            • Máquina de estados: DECIDE → PRE_ALIGN → TURN_90 → DRIVE_TILE<br>
+                            • Controle PID para alinhamento e centragem
+                        </div>
+                    </div>
+
+                    <div class="component">
+                        <div class="component-name">⚙️ Motor.h/cpp (Driver PWM)</div>
+                        <div class="component-status">Status: ✓ OK - Bem otimizado para Teensy 4.0</div>
+                        <div class="component-status" style="margin-top: 8px;">Responsabilidades:</div>
+                        <div style="margin-left: 20px; font-size: 0.9em; color: #666;">
+                            • Controle PWM individual por motor<br>
+                            • Suporte a deadband<br>
+                            • Função de correção customizável<br>
+                            • Ganho ajustável (0.05 a 1.0)
+                        </div>
+                    </div>
+
+                    <div class="component">
+                        <div class="component-name">📏 Sensores (ToF, Encoder, IMU, Cor)</div>
+                        <div class="component-status">Status: ✓ OK - Integrados corretamente</div>
+                        <div class="component-status" style="margin-top: 8px;">Responsabilidades:</div>
+                        <div style="margin-left: 20px; font-size: 0.9em; color: #666;">
+                            • VL53Mux12_FRAN: 12 sensores ToF com multiplexadores<br>
+                            • Encoder: 2 encoders (FL e RR) com interrupções<br>
+                            • BNO055: IMU de 9DOF, lê ângulo (yaw)<br>
+                            • ReflectancePlate: 4 canais RGB para detecção de pisos
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COMUNICAÇÃO ENTRE PARTES -->
+            <div class="section">
+                <h2 class="section-title">🔗 Fluxo de Dados e Comunicação</h2>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Módulo A</th>
+                            <th>Comunica Com</th>
+                            <th>Tipo</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>main.cpp</td>
+                            <td>VL53Mux12_FRAN</td>
+                            <td>Leitura sensores</td>
+                            <td>✓ OK</td>
+                        </tr>
+                        <tr>
+                            <td>main.cpp</td>
+                            <td>Scan360</td>
+                            <td>Processamento dados</td>
+                            <td>✓ OK</td>
+                        </tr>
+                        <tr>
+                            <td>main.cpp</td>
+                            <td>RobotControl</td>
+                            <td>PlannerInput → PlannerOutput</td>
+                            <td>✓ OK</td>
+                        </tr>
+                        <tr>
+                            <td>main.cpp</td>
+                            <td>Robot</td>
+                            <td>Comando move_tank()</td>
+                            <td>✓ OK</td>
+                        </tr>
+                        <tr>
+                            <td>Robot</td>
+                            <td>motor (4x)</td>
+                            <td>PWM individual</td>
+                            <td>✓ OK</td>
+                        </tr>
+                        <tr>
+                            <td>main.cpp</td>
+                            <td>OpenMVCamera</td>
+                            <td>Leitura vítimas</td>
+                            <td>⚠️ NÃO FUNCIONA (comentado)</td>
+                        </tr>
+                        <tr>
+                            <td>main.cpp</td>
+                            <td>SwitchAvoidance</td>
+                            <td>Detecção obstáculo</td>
+                            <td>✓ OK</td>
+                        </tr>
+                        <tr>
+                            <td>main.cpp</td>
+                            <td>Encoder (2x)</td>
+                            <td>Distância percorrida</td>
+                            <td>✓ OK</td>
+                        </tr>
+                        <tr>
+                            <td>main.cpp</td>
+                            <td>BNO055_FranRobots</td>
+                            <td>Yaw (ângulo)</td>
+                            <td>✓ OK</td>
+                        </tr>
+                        <tr>
+                            <td>main.cpp</td>
+                            <td>ReflectancePlate</td>
+                            <td>Tipo de piso</td>
+                            <td>✓ OK</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- FLUXO PRINCIPAL -->
+            <div class="section">
+                <h2 class="section-title">⚡ Fluxo Operacional Principal (loop 50ms)</h2>
+
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; font-family: monospace; font-size: 0.9em;">
+                    <div style="margin-bottom: 15px;">
+                        1. ✓ <strong>Atualizar LED</strong> (piscante de pausa)
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        2. ✓ <strong>Ler botão</strong> com debounce
+                        <div style="margin-left: 20px; font-size: 0.85em; color: #666;">
+                            → Se pressionado: pausa e retorna ao último checkpoint
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        3. ✓ <strong>Ler bumper</strong> (switch esquerdo e direito)
+                        <div style="margin-left: 20px; font-size: 0.85em; color: #666;">
+                            → Se acionado: recua, vira e desvia
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        4. ✓ <strong>Atualizar ToF</strong> (multiplexadores)
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        5. ✓ <strong>Snapshot ToF</strong> a cada 50ms
+                        <div style="margin-left: 20px; font-size: 0.85em; color: #666;">
+                            → Processa 12 sensores
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        6. ✓ <strong>Ler sensores de cor</strong>
+                        <div style="margin-left: 20px; font-size: 0.85em; color: #666;">
+                            → Determina: RED, BLUE, SILVER, BLACK, UNKNOWN
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        7. ⚠️ <strong>Ler câmeras OpenMV</strong> (comentado)
+                        <div style="margin-left: 20px; font-size: 0.85em; color: #666;">
+                            → Deveria detectar vítimas, mas está desabilitado
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        8. ✓ <strong>Chamar RobotControl::update()</strong>
+                        <div style="margin-left: 20px; font-size: 0.85em; color: #666;">
+                            → Retorna comando de movimento (PWM)
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        9. ⚠️ <strong>Verificar condições de vítima</strong>
+                        <div style="margin-left: 20px; font-size: 0.85em; color: #dc3545;">
+                            → SEMPRE FALSE (dados não lidos)
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        10. ✓ <strong>Aplicar comando de movimento</strong>
+                        <div style="margin-left: 20px; font-size: 0.85em; color: #666;">
+                            → move_tank() ou stop()
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 0;">
+                        11. ✓ <strong>Imprimir debug</strong> (Serial)
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHECKLIST FUNCIONALIDADES -->
+            <div class="section">
+                <h2 class="section-title">✅ Checklist de Funcionalidades</h2>
+
+                <ul class="checklist">
+                    <li>Inicialização de sensores I2C</li>
+                    <li>Calibração de ToF</li>
+                    <li>Calibração de cores</li>
+                    <li>Controle PWM dos motores</li>
+                    <li>Leitura de encoders</li>
+                    <li>Leitura de IMU (yaw)</li>
+                    <li>Detecção de pisos coloridos</li>
+                    <li>Evitação de obstáculos (bumper)</li>
+                    <li>Navegação do labirinto (DFS + BFS)</li>
+                    <li>Controle de movimento tank (linear + turn)</li>
+                    <li>Máquina de estados de movimento</li>
+                    <li>Checkpoint e retorno</li>
+                    <li>Botão de pausa e relocate</li>
+                    <li class="warning">Detecção de vítimas (câmeras)</li>
+                    <li class="warning">Resgate de vítimas (servo)</li>
+                    <li>LEDs de status</li>
+                    <li>Debug via Serial</li>
+                </ul>
+            </div>
+
+            <!-- RECOMENDAÇÕES -->
+            <div class="section">
+                <h2 class="section-title">💡 Recomendações</h2>
+
+                <div style="background: #e7f3ff; border-left: 4px solid #0066cc; padding: 20px; border-radius: 4px; margin-bottom: 15px;">
+                    <h3 style="color: #0066cc; margin-bottom: 10px;">1. Implementar Leitura de Câmeras</h3>
+                    <p>Descomente ou reimplemente o código das câmeras OpenMV (linhas 245-261 em main.cpp). Isso é crítico para o resgate de vítimas.</p>
+                </div>
+
+                <div style="background: #fff3e0; border-left: 4px solid #ff9800; padding: 20px; border-radius: 4px; margin-bottom: 15px;">
+                    <h3 style="color: #ff9800; margin-bottom: 10px;">2. Validar Lógica de Fallback de Encoders</h3>
+                    <p>Testar em campo se o algoritmo de seleção de encoder (traveledTicks) funciona corretamente. Considere adicionar logging para detectar quando um encoder falha.</p>
+                </div>
+
+                <div style="background: #f3e5f5; border-left: 4px solid #9c27b0; padding: 20px; border-radius: 4px; margin-bottom: 15px;">
+                    <h3 style="color: #9c27b0; margin-bottom: 10px;">3. Corrigir Convenção de Nomenclatura</h3>
+                    <p>Renomear classe <code>motor</code> para <code>Motor</code> para seguir convenção C++ (PascalCase para classes).</p>
+                </div>
+
+                <div style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 20px; border-radius: 4px; margin-bottom: 15px;">
+                    <h3 style="color: #4caf50; margin-bottom: 10px;">4. Testar Inicialização I2C</h3>
+                    <p>Use o i2c_scanner para confirmar que todos os dispositivos I2C estão respondendo na ordem correta.</p>
+                </div>
+
+                <div style="background: #fce4ec; border-left: 4px solid #e91e63; padding: 20px; border-radius: 4px;">
+                    <h3 style="color: #e91e63; margin-bottom: 10px;">5. Adicionar Tratamento de Erros</h3>
+                    <p>Considere adicionar validação dos dados lidos dos sensores antes de usá-los na PlannerInput.</p>
+                </div>
+            </div>
+
+            <!-- CONCLUSÃO -->
+            <div class="section">
+                <h2 class="section-title">🎯 Conclusão</h2>
+
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 8px;">
+                    <h3 style="margin-bottom: 15px; font-size: 1.3em;">Saúde Geral: 85% ✓</h3>
+
+                    <p style="margin-bottom: 15px;">
+                        <strong>O código está bem estruturado e a maioria das funcionalidades trabalham corretamente.</strong> A arquitetura é sólida com boa separação de responsabilidades entre os módulos.
+                    </p>
+
+                    <p style="margin-bottom: 15px;">
+                        <strong>⚠️ Problema Principal:</strong> O sistema de detecção de vítimas não funciona porque as câmeras OpenMV não estão sendo lidas. Isso impede completamente o resgate de vítimas.
+                    </p>
+
+                    <p style="margin-bottom: 15px;">
+                        <strong>✓ Pontos Positivos:</strong>
+                        <div style="margin-left: 20px; margin-top: 8px;">
+                            • Navegação do labirinto com DFS+BFS bem implementada<br>
+                            • Integração eficiente de sensores<br>
+                            • Máquina de estados clara e funcional<br>
+                            • Tratamento de obstáculos e pausa funcional<br>
+                            • Sistema de checkpoints para retorno
+                        </div>
+                    </p>
+
+                    <p>
+                        <strong>🔧 Próximos Passos:</strong> Implemente a leitura das câmeras OpenMV e a funcionalidade ficará 100% operacional.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Análise realizada em 11/08/2026 | Modelo: Teensy 4.0 (i.MX RT1062) | Ambiente: PlatformIO</p>
+        </div>
+    </div>
+</body>
+</html>

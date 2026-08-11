@@ -73,6 +73,7 @@ struct PlannerInput {
   int32_t encRrTicks = 0;       // encoder rear-right absolute ticks
   uint16_t tofLeftMm = 0;       // wall distance for lateral centering
   uint16_t tofRightMm = 0;      // wall distance for lateral centering
+  uint16_t tofFrontMm = 0;      // front wall distance (parada de seguranca no DRIVE_TILE)
 
   // OpenMV victim stream.
   uint8_t victimLeft = 0;
@@ -115,11 +116,22 @@ public:
   void begin(int16_t startX = 0, int16_t startY = 0, Heading startHeading = Heading::NORTH);
   void setTicksPerTile(int32_t ticks) { _ticksPerTile = (ticks > 1) ? ticks : 1; }
 
+  // Limites de tempo por fase. Servem de fallback quando nao ha IMU/encoder
+  // reais: sem eles o erro de yaw e a contagem de ticks nunca convergem.
+  // Com IMU/encoder ligados, a condicao normal dispara antes do timeout.
+  void setPreAlignMs(uint16_t ms)  { _preAlignMs = ms; }
+  void setTurn90Ms(uint16_t ms)    { _turn90Ms = ms; }
+  void setTileDriveMs(uint32_t ms) { _tileDriveMs = ms; }
+  void setFrontStopMm(uint16_t mm) { _frontStopMm = mm; }
+
   PlannerOutput update(const PlannerInput& in);
   bool relocateToLastCheckpoint();
   bool isExplorationComplete() const;
 
   const Pose2D& pose() const { return _pose; }
+  // Rumo que o robo deve estar perseguindo agora. Durante PRE_ALIGN/TURN_90
+  // ele difere de pose().heading, que so e atualizado ao fim do giro.
+  Heading targetHeading() const { return _targetHeading; }
   MissionState state() const { return _state; }
   MotionPhase phase() const { return _phase; }
   const MazeMap& map() const { return _map; }
@@ -140,7 +152,12 @@ private:
   Pose2D _pose;
   MissionState _state = MissionState::NAVIGATING;
   MotionPhase _phase = MotionPhase::DECIDE;
-  uint32_t _turn90StartMs = 0;
+  uint32_t _phaseStartMs = 0;
+
+  uint16_t _preAlignMs = 250;
+  uint16_t _turn90Ms = 700;
+  uint32_t _tileDriveMs = 1500;
+  uint16_t _frontStopMm = 90;
 
   Heading _targetHeading = Heading::NORTH;
   int32_t _startFlTicks = 0;
@@ -164,6 +181,9 @@ private:
 
   static constexpr int16_t LINEAR_TRAVEL_PWM = 2200;
   static constexpr int16_t LINEAR_ALIGN_PWM = 1400;
+  // Positivo = girar para a ESQUERDA (mesma convencao de Robot::turnLeft).
+  // Se o robo girar ao contrario na pista, inverta o sinal aqui.
+  static constexpr int16_t TURN_PWM = 1500;
 
   static constexpr uint16_t DFS_STACK_MAX = 512;
   static constexpr uint16_t BFS_PATH_MAX = 256;
