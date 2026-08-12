@@ -22,8 +22,10 @@ RobotControl::RobotControl() = default;
 void RobotControl::begin(int16_t startX, int16_t startY, Heading startHeading) {
   _pose = {startX, startY, startHeading};
   _targetHeading = startHeading;
-  _phase = MotionPhase::DECIDE;
-  _phaseStartMs = millis();
+  // Comeca pelo ciclo inteiro: se o robo foi largado com o nariz na parede,
+  // recua antes; e a primeira decisao tambem precisa de leitura de ToF
+  // tirada com o robo quadrado, nao de como ele caiu na pista.
+  enterCenter(millis(), false);
   _state = MissionState::NAVIGATING;
   _blueReleaseAtMs = 0;
   _dfsSize = 0;
@@ -45,8 +47,7 @@ bool RobotControl::relocateToLastCheckpoint() {
 
   _pose.x = _lastCheckpointX;
   _pose.y = _lastCheckpointY;
-  _phase = MotionPhase::DECIDE;
-  _phaseStartMs = millis();
+  enterCenter(millis(), false);
   _state = MissionState::NAVIGATING;
   _bfsLen = 0;
   _bfsIdx = 0;
@@ -91,9 +92,117 @@ PlannerOutput RobotControl::update(const PlannerInput& in) {
 
     _bfsLen = 0;
     _bfsIdx = 0;
-    _phase = MotionPhase::DECIDE;
+    enterCenter(in.nowMs, false);
     _state = MissionState::NAVIGATING;
     return out;
+  }
+
+  if (_phase == MotionPhase::CENTER) {
+    // Fotografa frente e tras AGORA, antes de mexer na posicao. Depois de
+    // avancar ou recuar essas duas leituras nao valem mais para decidir.
+    if (_latchPending) {
+      _frontFreeAtCenter = in.frontFree;
+      _backFreeAtCenter = in.backFree;
+      _latchPending = false;
+    }
+
+    _targetHeading = _pose.heading;   // posiciona mantendo o rumo
+
+    const float yawErr = shortestYawError(headingToYaw(_targetHeading), in.yawDeg);
+    out.command = MotionCommand::DRIVE_CLOSED_LOOP;
+    out.turnPwm = clampPwm(yawErr * YAW_KP);
+    out.phase = _phase;
+
+    // Erro longitudinal em mm. POSITIVO = precisa AVANCAR.
+    // A parede da frente e a referencia preferida; sem ela, a de tras serve
+    // igual, so com o sinal trocado. Sem nenhuma das duas nao ha referencia
+    // e a fase passa direto - num cruzamento aberto nao ha o que medir.
+    int32_t errMm = 0;
+    bool haveRef = false;
+
+    if (in.tofFrontMm > 0 && in.tofFrontMm <= _center.refValidMm) {
+      errMm = (int32_t)in.tofFrontMm - (int32_t)_center.frontTargetMm;
+      haveRef = true;
+    } else if (in.tofBackMm > 0 && in.tofBackMm <= _center.refValidMm) {
+      errMm = (int32_t)_center.backTargetMm - (int32_t)in.tofBackMm;
+      haveRef = true;
+    }
+
+    // Travas de seguranca: nunca avancar para dentro da parede da frente,
+    // nunca recuar para dentro da de tras. Zerar o erro no lado travado faz
+    // a fase assentar em vez de empurrar contra a parede ate o watchdog.
+    if (errMm > 0 && in.tofFrontMm > 0 && in.tofFrontMm <= _center.frontMinMm) errMm = 0;
+    if (errMm < 0 && in.tofBackMm  > 0 && in.tofBackMm  <= _center.backMinMm)  errMm = 0;
+
+    if (haveRef && labs(errMm) > (int32_t)_center.tolMm) {
+      _alignStable = 0;
+
+      float pwm = _center.kp * (float)errMm;
+      // Piso: o arranque linear tambem tem atrito estatico, so que menor
+      // que o do giro - aqui as rodas rolam em vez de arrastar de lado.
+      if (fabsf(pwm) < (float)_center.minPwm) {
+        pwm = (errMm > 0) ? (float)_center.minPwm : -(float)_center.minPwm;
+      }
+      if (pwm >  (float)_center.maxPwm) pwm =  (float)_center.maxPwm;
+      if (pwm < -(float)_center.maxPwm) pwm = -(float)_center.maxPwm;
+      out.linearPwm = (int16_t)pwm;
+    } else {
+      out.linearPwm = 0;
+      if (_alignStable < ALIGN_STABLE_CYCLES) _alignStable++;
+    }
+
+    const bool settled = !haveRef || (_alignStable >= ALIGN_STABLE_CYCLES);
+    const bool timedOut = (in.nowMs - _phaseStartMs) >= _center.maxMs;
+    if (!settled && !timedOut) return out;
+
+    _alignStable = 0;
+    _phase = MotionPhase::ALIGN;
+    _phaseStartMs = in.nowMs;
+    out.linearPwm = 0;
+    out.phase = _phase;
+    // cai para o ALIGN no mesmo ciclo
+  }
+
+  if (_phase == MotionPhase::ALIGN) {
+    // Quadra no cardinal ATUAL - nao no proximo. Este e o ponto de a fase
+    // vir antes do DECIDE: as leituras laterais de ToF que vao alimentar a
+    // decisao so valem com o robo perpendicular as paredes.
+    _targetHeading = _pose.heading;
+
+    const float yawErr = shortestYawError(headingToYaw(_targetHeading), in.yawDeg);
+
+    out.command = MotionCommand::DRIVE_CLOSED_LOOP;
+    out.linearPwm = 0;   // alinhar e parado: sem avanco nenhum
+    out.turnPwm = clampPwm(yawErr * YAW_KP);
+    out.phase = _phase;
+
+    if (fabsf(yawErr) <= TURN_TOL_DEG) {
+      if (_alignStable < ALIGN_STABLE_CYCLES) _alignStable++;
+    } else {
+      _alignStable = 0;
+    }
+
+    const bool settled = (_alignStable >= ALIGN_STABLE_CYCLES);
+    const bool timedOut = (in.nowMs - _phaseStartMs) >= _alignMs;
+    if (!settled && !timedOut) return out;
+
+    _alignStable = 0;
+    _phaseStartMs = in.nowMs;
+
+    if (_settleThenDrive) {
+      // Vem de um giro: ja decidido, ja centrado no eixo novo, ja quadrado.
+      // So falta andar. A baseline dos encoders e armada AQUI, depois do
+      // CENTER - se fosse no fim do TURN, o deslocamento da centragem
+      // entraria na conta do ladrilho.
+      _settleThenDrive = false;
+      _startFlTicks = in.encFlTicks;
+      _startRrTicks = in.encRrTicks;
+      _phase = MotionPhase::DRIVE_TILE;
+    } else {
+      _phase = MotionPhase::DECIDE;
+    }
+    out.phase = _phase;
+    // cai para a proxima fase no mesmo ciclo
   }
 
   if (_phase == MotionPhase::DECIDE) {
@@ -150,72 +259,97 @@ PlannerOutput RobotControl::update(const PlannerInput& in) {
     if (!haveMove) {
       out.command = MotionCommand::HOLD;
       out.source = DecisionSource::NONE;
+
+      // Antes o DECIDE parava aqui e devolvia HOLD para sempre - no log,
+      // 20+ ciclos travado sem nenhuma saida possivel. Agora ele so trava
+      // de verdade quando a missao acabou: exploracao completa e de volta
+      // ao ponto de partida.
+      if (isExplorationComplete() && _pose.x == _startX && _pose.y == _startY) {
+        return out;
+      }
+
+      // Caso contrario recomeca o ciclo e sente de novo. Limpar a memoria
+      // de aborto e o que importa: uma direcao descartada por UMA tentativa
+      // frustrada volta a ser candidata na proxima passagem.
+      _hasAbortedHeading = false;
+      enterCenter(in.nowMs, false);
+      out.phase = _phase;
+      out.pose = _pose;
       return out;
     }
 
     out.source = source;
+    _hasAbortedHeading = false;   // escolheu: a marca cumpriu o papel
     _targetHeading = nextHeading;
     reserveMoveDelta(_targetHeading);
-    _phase = MotionPhase::PRE_ALIGN;
+    _phase = MotionPhase::TURN;
     _phaseStartMs = in.nowMs;
-  }
-
-  if (_phase == MotionPhase::PRE_ALIGN) {
-    const float yawErr = shortestYawError(headingToYaw(_targetHeading), in.yawDeg);
-    const int16_t turnCmd = clampPwm(yawErr * YAW_KP);
-    const int16_t centerCmd = clampPwm(((int32_t)in.tofLeftMm - (int32_t)in.tofRightMm) * CENTER_KP);
-
-    out.command = MotionCommand::DRIVE_CLOSED_LOOP;
-    out.linearPwm = (fabsf(yawErr) < 12.0f) ? LINEAR_ALIGN_PWM : 0;
-    out.turnPwm = clampPwm(turnCmd + centerCmd);
+    _alignStable = 0;
     out.phase = _phase;
-
-    // Saida por alinhamento (quando ha IMU real) OU por tempo.
-    // Sem o timeout, yawDeg derivado da propria pose nunca converge e a
-    // fase trava para sempre: o erro so zera se a fase avancar, e a fase
-    // so avanca se o erro zerar.
-    const bool aligned = (fabsf(yawErr) <= TURN_TOL_DEG);
-    const bool timedOut = (in.nowMs - _phaseStartMs) >= _preAlignMs;
-    if (aligned || timedOut) {
-      _phase = MotionPhase::TURN_90;
-      _phaseStartMs = in.nowMs;
-    }
-    return out;
+    // cai para o TURN no mesmo ciclo
   }
 
-  if (_phase == MotionPhase::TURN_90) {
+  if (_phase == MotionPhase::TURN) {
+    // Fase unica de giro. Antes eram duas (PRE_ALIGN e TURN_90) mirando o
+    // MESMO _targetHeading: PRE_ALIGN ja fazia o giro inteiro e TURN_90 so
+    // commitava o _pose.heading depois.
+    const float yawErr = shortestYawError(headingToYaw(_targetHeading), in.yawDeg);
+
     out.command = MotionCommand::DRIVE_CLOSED_LOOP;
     out.linearPwm = 0;
+    out.turnPwm = clampPwm(yawErr * YAW_KP);
     out.phase = _phase;
 
-    // Ja apontando para o alvo: nao ha nada a girar.
-    if (_targetHeading == _pose.heading) {
+    // "Vira (ou nao)": seguir em frente nao gasta fase nenhuma.
+    const bool noTurnNeeded = (_targetHeading == _pose.heading);
+
+    if (fabsf(yawErr) <= TURN_TOL_DEG) {
+      if (_alignStable < ALIGN_STABLE_CYCLES) _alignStable++;
+    } else {
+      _alignStable = 0;
+    }
+    const bool settled = (_alignStable >= ALIGN_STABLE_CYCLES);
+
+    // Meia-volta leva o dobro do tempo de um quarto de volta.
+    const uint32_t limitMs = (_targetHeading == turnBack(_pose.heading))
+                             ? ((uint32_t)_turn90Ms * 2u)
+                             : (uint32_t)_turn90Ms;
+    const bool timedOut = (in.nowMs - _phaseStartMs) >= limitMs;
+
+    if (noTurnNeeded || settled) {
+      _pose.heading = _targetHeading;
+      // Nao vai direto para o DRIVE_TILE: passa por CENTER+ALIGN de novo.
+      // O giro trocou o eixo longitudinal pelo lateral, entao o que estava
+      // centrado antes agora e outra coisa - e e essa segunda centragem que
+      // poe o robo no centro do ladrilho tambem no eixo novo.
+      enterCenter(in.nowMs, true);
       out.turnPwm = 0;
-      _startFlTicks = in.encFlTicks;
-      _startRrTicks = in.encRrTicks;
-      _phase = MotionPhase::DRIVE_TILE;
-      _phaseStartMs = in.nowMs;
+      out.linearPwm = 0;
+      out.pose = _pose;
+      out.phase = _phase;
       return out;
     }
 
-    // Sentido do giro vem da comparacao discreta de heading, nao do yaw:
-    // sem IMU o yaw e sintetico e nao muda durante a fase.
-    const bool wantLeft = (_targetHeading == turnLeft(_pose.heading));
-    const bool wantBack = (_targetHeading == turnBack(_pose.heading));
-    const uint32_t turnMs = wantBack ? ((uint32_t)_turn90Ms * 2u) : (uint32_t)_turn90Ms;
-
-    out.turnPwm = (wantLeft || wantBack) ? TURN_PWM : (int16_t)(-TURN_PWM);
-
-    const float yawErr = shortestYawError(headingToYaw(_targetHeading), in.yawDeg);
-    const bool aligned = (fabsf(yawErr) <= TURN_TOL_DEG);
-    const bool timedOut = (in.nowMs - _phaseStartMs) >= turnMs;
-
-    if (aligned || timedOut) {
-      _pose.heading = _targetHeading;
-      _startFlTicks = in.encFlTicks;
-      _startRrTicks = in.encRrTicks;
-      _phase = MotionPhase::DRIVE_TILE;
-      _phaseStartMs = in.nowMs;
+    if (timedOut) {
+      // O giro NAO chegou no alvo. Commitar _targetHeading aqui era o que
+      // transformava o mapa em ficcao: o robo registrava heading E com o
+      // yaw parado em 354 graus (ou seja, N). Pior, seguia para o
+      // DRIVE_TILE e andava um ladrilho na direcao errada.
+      //
+      // Registra o rumo que o IMU realmente ve e recomeca o ciclo, sem
+      // andar. Se o giro estiver fisicamente impossivel o robo fica
+      // repetindo o ciclo no lugar - visivel e inofensivo, ao contrario de
+      // sair andando as cegas.
+      _alignStable = 0;
+      _pose.heading = headingFromYaw(in.yawDeg);
+      _bfsLen = 0;   // o caminho planejado dependia do giro ter dado certo
+      _bfsIdx = 0;
+      enterCenter(in.nowMs, false);
+      out.command = MotionCommand::HOLD;
+      out.linearPwm = 0;
+      out.turnPwm = 0;
+      out.pose = _pose;
+      out.phase = _phase;
     }
     return out;
   }
@@ -230,33 +364,111 @@ PlannerOutput RobotControl::update(const PlannerInput& in) {
     out.turnPwm = clampPwm(turnCmd + centerCmd);
     out.phase = _phase;
 
-    // Tres saidas possiveis. Sem encoder real traveledTicks() retorna sempre 0,
-    // entao byTicks nunca dispara e a fase rodaria para sempre.
-    const bool byTicks = (traveledTicks(in) >= _ticksPerTile);
-    const bool byTime  = ((in.nowMs - _phaseStartMs) >= _tileDriveMs);
-    const bool byWall  = (in.tofFrontMm > 0 && in.tofFrontMm <= _frontStopMm);
+    const int32_t traveled = traveledTicks(in);
+    const int32_t enough = (_ticksPerTile * TILE_COMPLETE_PCT) / 100;
+    const bool nearWall = (in.tofFrontMm > 0 && in.tofFrontMm <= _frontStopMm);
 
-    if (byTicks || byTime || byWall) {
-      _pose.x += _tileDx;
-      _pose.y += _tileDy;
-      Cell* c = _map.at(_pose.x, _pose.y);
-      if (c) c->visited = true;
-      while (popCurrentFromDfs()) {}
-      if (_returnHomeActive && _pose.x == _startX && _pose.y == _startY) {
-        _returnHomeActive = false;
-      }
-      _phase = MotionPhase::DECIDE;
-      _phaseStartMs = in.nowMs;
-      out.command = MotionCommand::HOLD;
-      out.linearPwm = 0;
-      out.turnPwm = 0;
-      out.pose = _pose;
-      out.phase = _phase;
+    // 1) Ladrilho andado por inteiro. Unica saida realmente normal.
+    if (traveled >= _ticksPerTile) {
+      completeTile(in, out);
+      return out;
     }
+
+    // 2) Parede frontal com o ladrilho quase todo andado: fundo de beco.
+    //    Chegou na celula, so nao deu para percorrer os ultimos ticks.
+    if (nearWall && traveled >= enough) {
+      completeTile(in, out);
+      return out;
+    }
+
+    // 3) Parede frontal logo no comeco: nao havia caminho aqui. Antes as
+    //    tres saidas avancavam a pose igual - era isso que dessincronizava
+    //    o mapa quando FRONT_STOP_MM (90) disparava logo depois de o
+    //    TOF_WALL_CLEAR_MM (120) ter liberado a passagem.
+    if (nearWall) {
+      abortTile(in, out, true);
+      return out;
+    }
+
+    // 4) Watchdog: roda travada ou encoder mudo. Tambem nao conta ladrilho,
+    //    mas nao culpa uma parede que pode nem existir.
+    if ((in.nowMs - _phaseStartMs) >= _tileDriveMs) {
+      abortTile(in, out, false);
+      return out;
+    }
+
     return out;
   }
 
   return out;
+}
+
+void RobotControl::enterCenter(uint32_t nowMs, bool thenDrive) {
+  _phase = MotionPhase::CENTER;
+  _phaseStartMs = nowMs;
+  _alignStable = 0;
+  _settleThenDrive = thenDrive;
+  // O proximo ciclo desta fase ainda ve o robo onde ele parou, antes de
+  // qualquer avanco ou recuo: e o momento de fotografar frente e tras.
+  _latchPending = true;
+}
+
+void RobotControl::completeTile(const PlannerInput& in, PlannerOutput& out) {
+  _pose.x += _tileDx;
+  _pose.y += _tileDy;
+
+  Cell* c = _map.at(_pose.x, _pose.y);
+  if (c) c->visited = true;
+
+  while (popCurrentFromDfs()) {}
+  if (_returnHomeActive && _pose.x == _startX && _pose.y == _startY) {
+    _returnHomeActive = false;
+  }
+
+  enterCenter(in.nowMs, false);
+  out.command = MotionCommand::HOLD;
+  out.linearPwm = 0;
+  out.turnPwm = 0;
+  out.pose = _pose;
+  out.phase = _phase;
+}
+
+void RobotControl::abortTile(const PlannerInput& in, PlannerOutput& out, bool blockAhead) {
+  // A pose NAO avanca: o robo nao chegou na celula seguinte.
+  //
+  // Limitacao conhecida: ele parou em algum ponto entre as duas celulas, e
+  // a pose diz que ainda esta na de tras. O erro e pequeno quando a parede
+  // aparece cedo (que e o caso que cai aqui), mas nao e zero. Recuar ate o
+  // centro pediria uma fase de re, que ainda nao existe.
+  if (blockAhead) {
+    // Aqui a versao anterior marcava a celula da frente como blocked no
+    // mapa. Errado por dois motivos:
+    //
+    // 1. A parede e propriedade da ARESTA entre duas celulas, nao da
+    //    celula. Marcar (1,0) por causa de uma parede a leste de (0,0)
+    //    declarava (1,0) inalcancavel tambem pelos outros tres lados.
+    // 2. Era permanente. Uma unica tentativa frustrada condenava a celula
+    //    para sempre - e com os encoders mudos TODO ladrilho aborta, entao
+    //    tres tentativas bastavam para o robo se declarar cercado e travar
+    //    no DECIDE.
+    //
+    // Agora e so memoria de uma tentativa, consumida pelo proximo DECIDE.
+    // Nada fica gravado no mapa; a parede continua sendo o que o ToF disser
+    // a cada ciclo.
+    _abortedHeading = _targetHeading;
+    _hasAbortedHeading = true;
+  }
+
+  // O caminho reservado nao foi cumprido: o resto do BFS nao vale mais.
+  _bfsLen = 0;
+  _bfsIdx = 0;
+
+  enterCenter(in.nowMs, false);
+  out.command = MotionCommand::HOLD;
+  out.linearPwm = 0;
+  out.turnPwm = 0;
+  out.pose = _pose;
+  out.phase = _phase;
 }
 
 void RobotControl::markCurrentTile(TileType tile) {
@@ -347,6 +559,11 @@ bool RobotControl::chooseDfsNeighbor(const PlannerInput& in, Heading& outHeading
     if (!relativeFree(in, rel)) continue;
 
     const Heading h = relativeToHeading(_pose.heading, rel);
+
+    // Nao repete a direcao que acabou de falhar. E memoria de uma passagem
+    // so: se nada mais servir, o DECIDE limpa a marca e reavalia.
+    if (_hasAbortedHeading && h == _abortedHeading) continue;
+
     Pose2D p = _pose;
     p.heading = h;
     stepForward(p);
@@ -517,10 +734,17 @@ bool RobotControl::headingFromTo(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
 }
 
 bool RobotControl::relativeFree(const PlannerInput& in, uint8_t rel) const {
-  if (rel == 0) return in.frontFree;
+  // Frente e tras combinam a leitura fresca com a latchada no centro do
+  // ladrilho: o CENTER move o robo no eixo longitudinal, afastando ou
+  // sem o latch uma parede frontal a 90 mm viraria "livre" so por o robo
+  // ter recuado para 140 mm. Basta um dos dois acusar parede para bloquear.
+  //
+  // Esquerda e direita saem so da leitura fresca, ja alinhada: sao paredes
+  // paralelas ao percurso e mal mudam com o recuo.
+  if (rel == 0) return in.frontFree && _frontFreeAtCenter;
   if (rel == 1) return in.leftFree;
   if (rel == 2) return in.rightFree;
-  return in.backFree;
+  return in.backFree && _backFreeAtCenter;
 }
 
 Heading RobotControl::relativeToHeading(Heading base, uint8_t rel) const {
@@ -552,6 +776,19 @@ float RobotControl::headingToYaw(Heading h) const {
   return 270.0f;
 }
 
+Heading RobotControl::headingFromYaw(float yawDeg) const {
+  // Cardinal mais proximo do yaw medido. Usado quando um giro nao completa:
+  // vale mais registrar onde o robo esta do que onde ele deveria estar.
+  float y = yawDeg;
+  while (y < 0.0f) y += 360.0f;
+  while (y >= 360.0f) y -= 360.0f;
+
+  if (y < 45.0f || y >= 315.0f) return Heading::NORTH;
+  if (y < 135.0f) return Heading::EAST;
+  if (y < 225.0f) return Heading::SOUTH;
+  return Heading::WEST;
+}
+
 float RobotControl::shortestYawError(float targetDeg, float currentDeg) const {
   float e = targetDeg - currentDeg;
   while (e > 180.0f) e -= 360.0f;
@@ -569,20 +806,27 @@ int32_t RobotControl::traveledTicks(const PlannerInput& in) const {
   const int32_t deltaFl = in.encFlTicks - _startFlTicks;
   const int32_t deltaRr = in.encRrTicks - _startRrTicks;
 
+  // Com o sinal normalizado por Encoder::setInverted(), avancar faz os DOIS
+  // deltas crescerem juntos. Sinais opostos agora significam de fato uma
+  // anomalia - giro no lugar, roda patinando, fio solto - e nao o caso
+  // normal de rodas espelhadas, como a versao anterior supunha.
+  //
+  // Nesse caso nao ha avanco que possa ser afirmado: devolve 0 e deixa o
+  // watchdog de tempo da fase resolver. Contar o giro como distancia seria
+  // pior, porque dessincroniza a pose do mapa.
+  const bool opposite = (deltaFl > 0 && deltaRr < 0) || (deltaFl < 0 && deltaRr > 0);
+  if (opposite) return 0;
+
   const int32_t dfl = abs(deltaFl);
   const int32_t drr = abs(deltaRr);
+
+  // Discordancia grande entre as rodas: uma delas provavelmente parou de
+  // contar. Confia na que andou mais - senao o ladrilho nunca termina.
   const int32_t ERROR_THRESHOLD = 150;
-  bool direcao = (deltaFl * deltaRr < 0);
-  int32_t diff = abs(dfl - drr);
-  if (diff > ERROR_THRESHOLD || direcao) {
-    if (dfl > drr) {
-        return dfl; // Confia só na roda dianteira esquerda
-      } else {
-        return drr; // Confia só na roda traseira direita
-      }
-  } else{
-    return (dfl + drr) / 2;
+  if (abs(dfl - drr) > ERROR_THRESHOLD) {
+    return (dfl > drr) ? dfl : drr;
   }
+  return (dfl + drr) / 2;
 }
 
 const char* RobotControl::toString(TileType t) {
@@ -621,8 +865,9 @@ const char* RobotControl::toString(MissionState s) {
 
 const char* RobotControl::toString(MotionPhase p) {
   switch (p) {
-    case MotionPhase::PRE_ALIGN: return "PRE_ALIGN";
-    case MotionPhase::TURN_90: return "TURN_90";
+    case MotionPhase::CENTER: return "CENTER";
+    case MotionPhase::ALIGN: return "ALIGN";
+    case MotionPhase::TURN: return "TURN";
     case MotionPhase::DRIVE_TILE: return "DRIVE_TILE";
     default: return "DECIDE";
   }

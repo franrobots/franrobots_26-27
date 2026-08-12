@@ -114,7 +114,7 @@ def circulo(c):
         x_comum = int(x - (altura / 2))
         off_x = espessura // 2
 
-        pontos = [0, 0.3, 0.55, 0.75, 0.95]
+        pontos = [0, 0.3, 0.5, 0.75, 0.95]
         cores = []
 
         for i, p in enumerate(pontos):
@@ -146,6 +146,7 @@ def circulo(c):
                 img_color.draw_rectangle(roixL, color=(255, 0, 0))
                 img_color.draw_rectangle(roiyL, color=(255, 0, 0))
         img_color.draw_circle((x, y, r), color=(255, 0, 0))
+        print(cores)
         return cores
 
 
@@ -252,7 +253,7 @@ while True:
                     # Sistema de votação usando frames contínuos
                     if frame_result != 0:
                         state_count.append(frame_result)
-                        if len(state_count) > 25:
+                        if len(state_count) > 15:
                             state_count.pop(0)
                     else:
                         if state_count:
@@ -265,10 +266,6 @@ while True:
         if result != 0 and confidence > 20:
             print(result)
             print(confidence)
-            print(predicted_label)
-            print(predicted_prob)
-            if cores:
-                print(cores)
             '''buffer[0] = result
             buffer[1] = confidence
             ledR.on()'''

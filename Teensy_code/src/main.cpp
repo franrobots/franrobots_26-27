@@ -5,6 +5,7 @@
 #include "RobotControl.h"
 #include "BNO055_FranRobots.h"
 #include "Encoder.h"
+#include "ToFCalibration.h"
 #include "config.h"
 
 // ============================================================
@@ -18,6 +19,8 @@
 //   yaw     (BNO055)   -> rumo. Referencia principal de direcao.
 //   encoder (2 rodas)  -> distancia do ladrilho + trim de equilibrio.
 //   ToF     (11 sens.) -> paredes livres + centragem no corredor.
+//
+// Ciclo: CENTER -> ALIGN -> DECIDE -> TURN -> CENTER -> ALIGN -> DRIVE_TILE
 // ============================================================
 
 // ========== SENSORES ==========
@@ -108,7 +111,13 @@ int32_t rrTicks = 0;
 int32_t tileStartFl = 0;   // baseline dos encoders no inicio do ladrilho
 int32_t tileStartRr = 0;
 
-MotionPhase lastPhase = MotionPhase::DECIDE;
+MotionPhase lastPhase = MotionPhase::CENTER;
+
+// Diagnostico: quantas vezes a baseline dos encoders foi rearmada desde o
+// ultimo print. Se este numero for alto, o delta dFL/dRR nunca cresce -
+// nao porque o encoder nao conta, mas porque o ponto de partida nao para
+// quieto. Serve para separar "encoder mudo" de "baseline inquieta".
+uint16_t phaseChangesSincePrint = 0;
 
 // Ultimos comandos aplicados (para o debug refletir o que foi para o motor)
 int16_t appliedLinear = 0;
@@ -151,6 +160,51 @@ float shortestAngle(float deg) {
 }
 
 // ============================================================
+// TESTE DE SENTIDO DOS MOTORES   (MOTOR_TEST_MODE em config.h)
+//
+// Aciona um motor por vez, ja com a inversao aplicada. Cada um tem que
+// girar no sentido de FRENTE. Os que girarem ao contrario, inverta a flag
+// MOTOR_INV_* correspondente. Rodar com as rodas no ar.
+// ============================================================
+
+void motorTestTick(uint32_t nowMs) {
+  static uint8_t step = 0;
+  static uint32_t nextMs = 0;
+
+  if (nowMs < nextMs) return;
+  nextMs = nowMs + MOTOR_TEST_STEP_MS;
+
+  robotBase.stop(true);
+
+  // Vai direto no motor: setLeftRight moveria os dois motores do lado.
+  // As flags de inversao vivem no Robot, entao replico o sinal na mao.
+  switch (step) {
+    case 0:
+      Serial.println("FL (M3) - deve girar para FRENTE");
+      mFL.applyPWM(MOTOR_INV_FL ? -MOTOR_TEST_PWM : MOTOR_TEST_PWM);
+      break;
+    case 1:
+      Serial.println("RL (M4) - deve girar para FRENTE");
+      mRL.applyPWM(MOTOR_INV_RL ? -MOTOR_TEST_PWM : MOTOR_TEST_PWM);
+      break;
+    case 2:
+      Serial.println("FR (M1) - deve girar para FRENTE");
+      mFR.applyPWM(MOTOR_INV_FR ? -MOTOR_TEST_PWM : MOTOR_TEST_PWM);
+      break;
+    case 3:
+      Serial.println("RR (M2) - deve girar para FRENTE");
+      mRR.applyPWM(MOTOR_INV_RR ? -MOTOR_TEST_PWM : MOTOR_TEST_PWM);
+      break;
+    default:
+      Serial.println("--- os quatro juntos: o robo deve andar para FRENTE ---");
+      robotBase.move_tank(MOTOR_TEST_PWM, 0);
+      break;
+  }
+
+  step = (step + 1) % 5;
+}
+
+// ============================================================
 // SETUP
 // ============================================================
 
@@ -176,6 +230,17 @@ void setup() {
   tof.setEmaAlpha(0.25f);
   Serial.println("OK");
 
+  // ---------- Offsets de ToF gravados na EEPROM ----------
+  // Sem isto todos os offsets ficam em zero e cada sensor entrega a sua
+  // distancia crua, com o recuo de montagem embutido. Como snapshot() serve
+  // EMA(raw - offset), esse vies entra direto em tudo que a navegacao usa -
+  // e a centragem lateral e a mais sensivel: ela mede minLeft() - minRight()
+  // e assume os dois lados simetricos. Se a esquerda estiver 8 mm mais
+  // recuada que a direita, o robo "centraliza" 8 mm fora do centro, sempre.
+  Serial.print("Offsets ToF (EEPROM)..... ");
+  ToFCalibration::load(tof);
+  Serial.println("carregados");
+
   // ---------- BNO055 ----------
   // Compartilha o mesmo barramento I2C dos multiplexadores ToF.
   Serial.print("BNO055 (IMU)............. ");
@@ -193,18 +258,42 @@ void setup() {
 
   // ---------- Encoders ----------
   // A ordem importa: o primeiro begin() pega a ISR 0, o segundo a ISR 1.
+  // setInverted normaliza o sinal: FL e RR estao em lados espelhados do
+  // chassi, e tanto traveledTicks() quanto o trim de equilibrio abaixo
+  // assumem que os DOIS contam positivo andando para frente.
   Serial.print("Encoders (FL + RR)....... ");
   encFL.begin(true);
   encRR.begin(true);
+  encFL.setInverted(ENC_FL_INVERTED);
+  encRR.setInverted(ENC_RR_INVERTED);
   encFL.reset();
   encRR.reset();
-  Serial.println("OK");
+  Serial.print("OK (FL ");
+  Serial.print(ENC_FL_INVERTED ? "invertido" : "direto");
+  Serial.print(", RR ");
+  Serial.print(ENC_RR_INVERTED ? "invertido" : "direto");
+  Serial.println(")");
 
   // ---------- Motores ----------
+  // As inversoes tem que ser aplicadas: sem elas as duas rodas de um mesmo
+  // lado podem girar em sentidos opostos e se anular. Ver MOTOR_INV_* em
+  // config.h e o MOTOR_TEST_MODE para determina-las.
   Serial.print("Motores (4).............. ");
   robotBase.begin(PWM_RESOLUTION, PWM_FREQUENCY);
+  robotBase.invertFL(MOTOR_INV_FL);
+  robotBase.invertRL(MOTOR_INV_RL);
+  robotBase.invertFR(MOTOR_INV_FR);
+  robotBase.invertRR(MOTOR_INV_RR);
   robotBase.stop(true);
-  Serial.println("OK");
+  Serial.print("OK (inv FL:");
+  Serial.print(MOTOR_INV_FL ? "S" : "N");
+  Serial.print(" RL:");
+  Serial.print(MOTOR_INV_RL ? "S" : "N");
+  Serial.print(" FR:");
+  Serial.print(MOTOR_INV_FR ? "S" : "N");
+  Serial.print(" RR:");
+  Serial.print(MOTOR_INV_RR ? "S" : "N");
+  Serial.println(")");
 
   // ---------- PID ----------
   Serial.print("PID (yaw + encoder)...... ");
@@ -217,14 +306,38 @@ void setup() {
   controller.begin(0, 0, Heading::NORTH);
   controller.setTicksPerTile(ENCODER_TICKS_PER_TILE);
   // Com IMU e encoders reais, estes tempos viram apenas watchdog.
-  controller.setPreAlignMs(PHASE_PREALIGN_MAX_MS);
+  controller.setAlignMs(PHASE_ALIGN_MAX_MS);
   controller.setTurn90Ms(PHASE_TURN_MAX_MS);
   controller.setTileDriveMs(PHASE_DRIVE_MAX_MS);
   controller.setFrontStopMm(FRONT_STOP_MM);
+  CenteringConfig centering;
+  centering.frontTargetMm = ALIGN_FRONT_TARGET_MM;
+  centering.backTargetMm  = ALIGN_BACK_TARGET_MM;
+  centering.refValidMm    = CENTER_REF_VALID_MM;
+  centering.tolMm         = CENTER_TOL_MM;
+  centering.frontMinMm    = FRONT_STOP_MM;
+  centering.backMinMm     = ALIGN_BACK_MIN_MM;
+  centering.kp            = CENTER_POS_KP;
+  centering.minPwm        = CENTER_POS_MIN_PWM;
+  centering.maxPwm        = CENTER_POS_MAX_PWM;
+  centering.maxMs         = PHASE_CENTER_MAX_MS;
+  controller.setCentering(centering);
   Serial.println("OK");
 
-  lastPhase = MotionPhase::DECIDE;
+  lastPhase = MotionPhase::CENTER;
   lastControlMs = millis();
+
+  if (MOTOR_TEST_MODE) {
+    Serial.println();
+    Serial.println("--------------------------------------------------------");
+    Serial.println("  TESTE DE SENTIDO DOS MOTORES - rodas no ar!");
+    Serial.println("  Um motor por vez. Cada um deve girar para FRENTE.");
+    Serial.println("  Os que girarem ao contrario: inverta MOTOR_INV_* em");
+    Serial.println("  config.h. No fim os quatro giram juntos.");
+    Serial.println("--------------------------------------------------------");
+    Serial.println();
+    return;
+  }
 
   Serial.println();
   Serial.println("--------------------------------------------------------");
@@ -245,6 +358,12 @@ void setup() {
 
 void loop() {
   const uint32_t nowMs = millis();
+
+  // ---------- Teste de sentido dos motores ----------
+  if (MOTOR_TEST_MODE) {
+    motorTestTick(nowMs);
+    return;
+  }
 
   // ---------- ToF: round-robin, um sensor por iteracao ----------
   tof.update();
@@ -304,6 +423,7 @@ void loop() {
   in.tofLeftMm  = bothWalls ? leftMm  : 0;
   in.tofRightMm = bothWalls ? rightMm : 0;
   in.tofFrontMm = scan.minFront();
+  in.tofBackMm  = scan.minBack();   // referencia de re para o CENTER
 
   // Agora sao dados REAIS: o RobotControl passa a fechar as malhas dele
   // (transicao de fase por erro de yaw, fim do ladrilho por ticks).
@@ -324,6 +444,7 @@ void loop() {
   // ---------- Troca de fase: rearma os PIDs ----------
   if (out.phase != lastPhase) {
     lastPhase = out.phase;
+    phaseChangesSincePrint++;
     yawPid.reset();
     encPid.reset();
     // Baseline dos encoders para o trim de equilibrio do ladrilho.
@@ -354,6 +475,11 @@ void loop() {
   // ---------- Termo de equilibrio das rodas ----------
   // Se a roda esquerda andou mais que a direita, o robo abriu para a
   // direita: corrige girando para a esquerda (termo negativo).
+  //
+  // PRE-REQUISITO: os dois encoders contam positivo para frente
+  // (Encoder::setInverted no setup). Sem isso (dFl - dRr) vira a SOMA das
+  // distancias em vez da diferenca, cresce sem parar e satura o termo em
+  // ENC_OUT_MAX ja no primeiro terco do ladrilho.
   const int32_t dFl = flTicks - tileStartFl;
   const int32_t dRr = rrTicks - tileStartRr;
   float encTerm = ENC_BALANCE_SIGN * encPid.update((float)(dFl - dRr), nowMs);
@@ -382,10 +508,60 @@ void loop() {
       // Reta: avanca e soma as tres correcoes.
       linearCmd = DRIVE_PWM;
       turnRaw = yawTerm + encTerm + centerTerm;
+
+      // Teto SEPARADO para a correcao no avanco. move_tank faz
+      // left = DRIVE_PWM + turn e right = DRIVE_PWM - turn: se turn chegar
+      // perto de DRIVE_PWM, a roda de um lado zera e a do outro satura -
+      // o robo para de andar e passa a girar no meio do ladrilho. Este
+      // limite mantem a correcao como direcao, nao como giro.
+      if (turnRaw >  DRIVE_TURN_MAX) turnRaw =  DRIVE_TURN_MAX;
+      if (turnRaw < -DRIVE_TURN_MAX) turnRaw = -DRIVE_TURN_MAX;
+    } else if (out.phase == MotionPhase::CENTER) {
+      // Posicionamento longitudinal. O PWM vem do RobotControl, que e quem
+      // tem o erro em mm; aqui so se segura o rumo com o yaw.
+      //
+      // Sem centragem lateral e sem trim de encoder: os dois foram pensados
+      // para o avanco de um ladrilho. O termo de centragem em particular
+      // inverte de efeito andando de re - corrigiria para o lado errado.
+      linearCmd = out.linearPwm;
+      turnRaw = yawTerm;
+      if (turnRaw >  DRIVE_TURN_MAX) turnRaw =  DRIVE_TURN_MAX;
+      if (turnRaw < -DRIVE_TURN_MAX) turnRaw = -DRIVE_TURN_MAX;
     } else {
-      // PRE_ALIGN / TURN_90: gira parado ate bater no rumo alvo.
+      // ALIGN / TURN: gira parado ate bater no rumo alvo.
+      //
+      // A centragem lateral fica de fora de proposito: com traccao
+      // diferencial o robo nao anda de lado, entao parado nao ha o que
+      // corrigir. Ela so faz sentido durante o DRIVE_TILE.
       linearCmd = 0;
       turnRaw = yawTerm;
+
+      // Parado, as quatro rodas tem que arrastar de lado. Abaixo de
+      // TURN_MIN_PWM o motor nao vence o atrito estatico e o robo nao sai
+      // do lugar; acima dele, uma vez solto, gira dezenas de graus de uma
+      // vez. Os dois regimes precisam de tratamento diferente.
+      //
+      // So nesta fase: no DRIVE_TILE e no CENTER as rodas ja estao
+      // girando - o atrito estatico ja foi vencido - e forcar um piso
+      // desses jogaria o robo para fora da linha.
+      const float absErr = fabsf(yawErr);
+      const float dir = (yawErr > 0.0f) ? 1.0f : -1.0f;
+
+      if (absErr <= YAW_TOL_DEG) {
+        // Chegou. Solta, em vez de ficar chutando o alvo.
+        turnRaw = 0.0f;
+      } else if (absErr > TURN_FINE_DEG) {
+        // Erro grande (o giro de 90 graus): acionamento continuo, com piso
+        // para garantir o arranque.
+        if (fabsf(turnRaw) < TURN_MIN_PWM) turnRaw = dir * TURN_MIN_PWM;
+      } else {
+        // Erro pequeno: pulsos. O pulso da o empurrao que vence o atrito e
+        // acaba antes de o robo girar demais - com acionamento continuo
+        // nao ha meio termo entre nao mover e passar longe.
+        const uint32_t period = TURN_PULSE_ON_MS + TURN_PULSE_OFF_MS;
+        const bool pulseOn = (nowMs % period) < TURN_PULSE_ON_MS;
+        turnRaw = pulseOn ? (dir * TURN_MIN_PWM) : 0.0f;
+      }
     }
   }
 
@@ -431,20 +607,39 @@ void loop() {
     Serial.print(appliedTurn);
     Serial.println(")");
 
-    // Malha de rumo + odometria
+    // Malha de rumo
     Serial.print("  Yaw:");
     Serial.print(in.yawDeg, 1);
     Serial.print(" alvo:");
     Serial.print(targetYaw, 0);
     Serial.print(" erro:");
     Serial.print(dbgYawErr, 1);
-    Serial.print(" | Enc dFL:");
+    Serial.println();
+
+    // Odometria. "abs" e a contagem ACUMULADA desde o boot - o mesmo valor
+    // que o basic_usage.cpp imprime. "d" e a diferenca contra a baseline,
+    // que e rearmada a cada troca de fase; "trocas" conta quantas vezes
+    // isso aconteceu desde o print anterior.
+    //
+    // COMO LER: abs parado = ISR nao dispara (problema eletrico/pinagem).
+    // abs crescendo com d em zero e trocas alto = a baseline nao para
+    // quieta, o encoder esta bom e o problema e a maquina de fases.
+    Serial.print("  Enc abs FL:");
+    Serial.print(flTicks);
+    Serial.print(" RR:");
+    Serial.print(rrTicks);
+    Serial.print(" | d FL:");
     Serial.print(dFl);
-    Serial.print(" dRR:");
+    Serial.print(" RR:");
     Serial.print(dRr);
+    Serial.print(" med:");
+    Serial.print((dFl + dRr) / 2);
     Serial.print("/");
     Serial.print(ENCODER_TICKS_PER_TILE);
+    Serial.print(" | trocas:");
+    Serial.print(phaseChangesSincePrint);
     Serial.println();
+    phaseChangesSincePrint = 0;
 
     // Termos do PID
     Serial.print("  PID yaw:");
