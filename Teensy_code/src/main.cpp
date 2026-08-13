@@ -327,6 +327,26 @@ void setup() {
   lastPhase = MotionPhase::CENTER;
   lastControlMs = millis();
 
+  if (TOF_PROBE_MODE) {
+    Serial.println();
+    Serial.println("--------------------------------------------------------");
+    Serial.println("  MEDICAO DOS ToF - nenhum motor e acionado");
+    Serial.println("--------------------------------------------------------");
+    Serial.println("1) Marque com fita o CENTRO de um ladrilho.");
+    Serial.println("2) Ponha o robo ali a mao, quadrado, com parede A");
+    Serial.println("   FRENTE. O F: que aparecer e ALIGN_FRONT_TARGET_MM.");
+    Serial.println("3) Repita com parede ATRAS: o B: e ALIGN_BACK_TARGET_MM.");
+    Serial.println("4) Confira que FRONT_STOP_MM ficou ABAIXO do F: medido,");
+    Serial.println("   senao o DRIVE_TILE para antes de chegar no centro.");
+    Serial.println();
+    Serial.println("L-R perto de zero com o robo centrado significa que os");
+    Serial.println("offsets de EEPROM estao certos. Se houver um vies fixo,");
+    Serial.println("rode a calibracao de ToF antes de seguir.");
+    Serial.println("--------------------------------------------------------");
+    Serial.println();
+    return;
+  }
+
   if (MOTOR_TEST_MODE) {
     Serial.println();
     Serial.println("--------------------------------------------------------");
@@ -372,6 +392,31 @@ void loop() {
     lastTofUpdateMs = nowMs;
     tof.snapshot(raw);
     scan.s = raw;
+  }
+
+  // ---------- Medicao dos ToF ----------
+  // Nenhum motor e acionado. Serve para ler os alvos de centragem com o
+  // robo posicionado a mao no centro de um ladrilho.
+  if (TOF_PROBE_MODE) {
+    if (nowMs - lastPrintMs >= 250) {
+      lastPrintMs = nowMs;
+      Serial.print("F:");
+      Serial.print(scan.minFront());
+      Serial.print("  B:");
+      Serial.print(scan.minBack());
+      Serial.print("  L:");
+      Serial.print(scan.minLeft());
+      Serial.print("  R:");
+      Serial.print(scan.minRight());
+      Serial.print("   | L-R:");
+      Serial.print((int32_t)scan.minLeft() - (int32_t)scan.minRight());
+      Serial.print("  sensores ok ");
+      Serial.print(scan.validFront());
+      Serial.print(scan.validLeft());
+      Serial.print(scan.validRight());
+      Serial.println(scan.validBack());
+    }
+    return;
   }
 
   // ---------- IMU: cadencia propria, leitura I2C nao e barata ----------

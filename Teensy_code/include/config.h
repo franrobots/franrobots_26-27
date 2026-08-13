@@ -81,6 +81,12 @@ constexpr bool MOTOR_TEST_MODE = false;
 constexpr int16_t  MOTOR_TEST_PWM    = 1800;
 constexpr uint16_t MOTOR_TEST_STEP_MS = 1500;
 
+// Modo de medicao dos ToF. Com true a navegacao nao roda e NENHUM motor e
+// acionado: o loop so imprime as quatro distancias. E como se mede
+// ALIGN_FRONT_TARGET_MM e ALIGN_BACK_TARGET_MM - ver o bloco de centragem
+// longitudinal no fim deste arquivo.
+constexpr bool TOF_PROBE_MODE = false;
+
 
 // ======================================================
 // 🟢 ENCODERS (1 CANAL POR MOTOR)
@@ -337,21 +343,49 @@ constexpr uint16_t FRONT_STOP_MM = 90;
 // deixa o robo no centro do ladrilho nos dois - o que a traccao diferencial
 // nao consegue fazer de uma vez so, ja que o robo nao anda de lado.
 //
-// COMO MEDIR ALIGN_FRONT_TARGET_MM: ponha o robo no centro exato de um
-// ladrilho com parede a frente e leia o ToF frontal. Esse e o numero.
-// Confira tambem que ele da folga de giro: gire 360 graus a mao nessa
-// posicao e veja se o canto raspa.
+// ####################################################################
+// ##  ESTES DOIS DECIDEM ONDE O ROBO PARA. Nao e ENCODER_TICKS_PER_  ##
+// ##  TILE, nem TILE_SIZE_MM: com parede a frente (ou atras) dentro  ##
+// ##  do alcance, a fase CENTER DESCARTA os encoders e posiciona o   ##
+// ##  robo so por estes alvos.                                       ##
+// ####################################################################
 //
-// Pode passar de TOF_WALL_CLEAR_MM sem problema: a decisao usa a leitura
-// LATCHADA no centro do ladrilho, tirada antes de mexer (RobotControl::
-// relativeFree). Sem esse latch, recuar transformaria parede em passagem.
-constexpr uint16_t ALIGN_FRONT_TARGET_MM = 109;  // alvo com parede a FRENTE
-constexpr uint16_t ALIGN_BACK_TARGET_MM  = 130;  // alvo com parede so ATRAS
+// DEFINICAO: quanto o ToF le com o robo no centro EXATO de um ladrilho que
+// tem parede naquela borda. NAO e folga de giro - essa era a definicao de
+// quando esta fase era so um recuo, e e o erro que deixa o robo parado em
+// cima da divisao entre dois ladrilhos.
+//
+// COMO MEDIR: ligue TOF_PROBE_MODE (abaixo). Marque com fita o centro de um
+// ladrilho, ponha o robo ali a mao com parede a frente e leia F: no serial.
+// Repita com parede atras para o B:.
+//
+// Os dois valores so sao iguais se o chassi for simetrico - e a traseira
+// tem 2 sensores contra 3 da frente. Meça os dois.
+//
+// ORDEM DE GRANDEZA: e o meio-ladrilho MENOS o quanto o sensor avanca em
+// relacao ao centro do robo. Com ladrilho de 280 mm o meio e 140 mm; se o
+// sensor fica 80 mm a frente do centro, a leitura no centro e ~60 mm.
+constexpr uint16_t ALIGN_FRONT_TARGET_MM = 109;  // MEDIR
+constexpr uint16_t ALIGN_BACK_TARGET_MM  = 130;  // MEDIR
 constexpr uint16_t ALIGN_BACK_MIN_MM     = 70;   // nunca recuar alem disso
 
-// Acima disto a parede esta longe demais para servir de referencia - e o
-// ladrilho vizinho, nao a borda deste.
-constexpr uint16_t CENTER_REF_VALID_MM = 400;
+// Alcance em que uma parede ainda conta como borda DESTE ladrilho.
+//
+// Derivado, nao chutado: uma parede um ladrilho a frente le
+// ALIGN_FRONT_TARGET_MM + TILE_CENTER_TO_CENTER_MM. Estava fixo em 400
+// contra 109 + 280 = 389 - onze milimetros de margem. Bastava ruido, ou o
+// robo estar um pouco atras do centro, para ele aceitar a parede ERRADA
+// como referencia e andar um ladrilho inteiro "centralizando" nela,
+// terminando em cima da divisao seguinte.
+//
+// Meio ladrilho de margem separa os dois casos com folga: aceita a borda
+// deste ladrilho mesmo com o robo bem atrasado, e rejeita a do proximo.
+constexpr uint16_t CENTER_REF_VALID_MM =
+    ALIGN_FRONT_TARGET_MM + TILE_CENTER_TO_CENTER_MM / 2;
+
+static_assert(CENTER_REF_VALID_MM < ALIGN_FRONT_TARGET_MM + TILE_CENTER_TO_CENTER_MM,
+              "o alcance valido chega na parede do ladrilho SEGUINTE: o robo "
+              "vai andar um ladrilho inteiro tentando se centrar nela");
 
 // Banda morta. Apertar demais faz o robo ficar caçando o alvo, porque o
 // arranque linear tambem tem atrito estatico.
